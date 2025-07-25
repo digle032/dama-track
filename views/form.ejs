@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title><%= shipment ? 'Edit Shipment' : 'Add Shipment' %></title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+  <div class="container mt-5">
+    <div class="card shadow-sm">
+      <div class="card-header">
+        <h4><%= shipment ? 'Edit Shipment' : 'Add Shipment' %></h4>
+      </div>
+      <div class="card-body">
+        <form method="POST" action="<%= action %>">
+          <div class="mb-3">
+            <label class="form-label">Date</label>
+            <input type="datetime-local" name="date" class="form-control"
+              value="<%= shipment?.date ? shipment.date.toISOString().slice(0,16) : '' %>" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Location</label>
+            <input type="text" name="location" class="form-control" value="<%= shipment?.location || '' %>" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Tracking Number</label>
+            <input type="text" name="tracking" id="tracking" class="form-control"
+              value="<%= shipment?.tracking || '' %>" required autofocus>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Client</label>
+            <input type="text" name="client" class="form-control" value="<%= shipment?.client || '' %>" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Transport</label>
+            <input type="text" name="transport" class="form-control" value="<%= shipment?.transport || '' %>">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Courier</label>
+            <input type="text" name="courier" class="form-control" value="<%= shipment?.courier || '' %>">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Status</label>
+            <input type="text" name="status" class="form-control" value="<%= shipment?.status || '' %>">
+          </div>
+
+          <button type="submit" class="btn btn-success w-100">
+            <%= shipment ? 'Update Shipment' : 'Add Shipment' %>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Barcode scanner support -->
+  <script>
+    const trackingInput = document.getElementById('tracking');
+    trackingInput.focus();
+
+    trackingInput.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.form.submit();
+      }
+    });
+  </script>
+
+</body>
+</html>
