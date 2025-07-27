@@ -20,17 +20,15 @@ router.get('/add', (req, res) => {
   res.render('form', { error: null });
 });
 
-// Add a shipment — only tracking number required
+// Add shipment (only tracking is required, rest can be null)
 router.post('/add', (req, res) => {
-  const {
-    date = null,
-    location = null,
-    tracking,
-    client = null,
-    transport = null,
-    courier = null,
-    status = null,
-  } = req.body;
+  const tracking = req.body.tracking;
+  const date = req.body.date?.trim() === '' ? null : req.body.date;
+  const location = req.body.location?.trim() === '' ? null : req.body.location;
+  const client = req.body.client?.trim() === '' ? null : req.body.client;
+  const transport = req.body.transport?.trim() === '' ? null : req.body.transport;
+  const courier = req.body.courier?.trim() === '' ? null : req.body.courier;
+  const status = req.body.status?.trim() === '' ? null : req.body.status;
 
   if (!tracking) {
     return res.status(400).render('form', { error: 'Tracking number is required.' });
@@ -54,7 +52,7 @@ router.post('/add', (req, res) => {
   );
 });
 
-// Edit form
+// Edit shipment form
 router.get('/edit/:id', (req, res) => {
   const id = req.params.id;
   const query = 'SELECT * FROM shipments WHERE id = ?';
@@ -70,7 +68,13 @@ router.get('/edit/:id', (req, res) => {
 // Update shipment
 router.post('/edit/:id', (req, res) => {
   const id = req.params.id;
-  const { date, location, tracking, client, transport, courier, status } = req.body;
+  const tracking = req.body.tracking;
+  const date = req.body.date?.trim() === '' ? null : req.body.date;
+  const location = req.body.location?.trim() === '' ? null : req.body.location;
+  const client = req.body.client?.trim() === '' ? null : req.body.client;
+  const transport = req.body.transport?.trim() === '' ? null : req.body.transport;
+  const courier = req.body.courier?.trim() === '' ? null : req.body.courier;
+  const status = req.body.status?.trim() === '' ? null : req.body.status;
 
   const query = `
     UPDATE shipments SET date = ?, location = ?, tracking = ?, client = ?, transport = ?, courier = ?, status = ?
