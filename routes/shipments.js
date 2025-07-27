@@ -20,18 +20,19 @@ router.get('/add', (req, res) => {
   res.render('form', { error: null });
 });
 
-// Add shipment (only tracking is required, rest can be null)
+// Add shipment (status optional, all others required)
 router.post('/add', (req, res) => {
   const tracking = req.body.tracking;
   const date = req.body.date?.trim() === '' ? null : req.body.date;
-  const location = req.body.location?.trim() === '' ? null : req.body.location;
-  const client = req.body.client?.trim() === '' ? null : req.body.client;
-  const transport = req.body.transport?.trim() === '' ? null : req.body.transport;
-  const courier = req.body.courier?.trim() === '' ? null : req.body.courier;
+  const location = req.body.location;
+  const client = req.body.client;
+  const transport = req.body.transport;
+  const courier = req.body.courier;
   const status = req.body.status?.trim() === '' ? null : req.body.status;
 
-  if (!tracking) {
-    return res.status(400).render('form', { error: 'Tracking number is required.' });
+  // Validate all required fields except status
+  if (!tracking || !date || !location || !client || !transport || !courier) {
+    return res.status(400).render('form', { error: 'All fields except status are required.' });
   }
 
   const query = `
@@ -70,11 +71,15 @@ router.post('/edit/:id', (req, res) => {
   const id = req.params.id;
   const tracking = req.body.tracking;
   const date = req.body.date?.trim() === '' ? null : req.body.date;
-  const location = req.body.location?.trim() === '' ? null : req.body.location;
-  const client = req.body.client?.trim() === '' ? null : req.body.client;
-  const transport = req.body.transport?.trim() === '' ? null : req.body.transport;
-  const courier = req.body.courier?.trim() === '' ? null : req.body.courier;
+  const location = req.body.location;
+  const client = req.body.client;
+  const transport = req.body.transport;
+  const courier = req.body.courier;
   const status = req.body.status?.trim() === '' ? null : req.body.status;
+
+  if (!tracking || !date || !location || !client || !transport || !courier) {
+    return res.status(400).send('All fields except status are required.');
+  }
 
   const query = `
     UPDATE shipments SET date = ?, location = ?, tracking = ?, client = ?, transport = ?, courier = ?, status = ?
