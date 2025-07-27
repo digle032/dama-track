@@ -5,18 +5,22 @@ const db = require('../db');
 // Show all shipments
 router.get('/', (req, res) => {
   const query = 'SELECT * FROM shipments ORDER BY date DESC';
+
   db.query(query, (err, results) => {
-    if (err) return res.status(500).send('Database error');
+    if (err) {
+      console.error('❌ Error fetching shipments:', err);
+      return res.status(500).send('Database error');
+    }
     res.render('dashboard', { shipments: results });
   });
 });
 
-// Show add form
+// Show form to add shipment
 router.get('/add', (req, res) => {
   res.render('form', { error: null });
 });
 
-// Add shipment
+// Add shipment (all fields required)
 router.post('/add', (req, res) => {
   const { date, location, tracking, client, transport, courier, status } = req.body;
 
@@ -28,17 +32,29 @@ router.post('/add', (req, res) => {
     INSERT INTO shipments (date, location, tracking, client, transport, courier, status)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `;
-  db.query(query, [date, location, tracking, client, transport, courier, status], (err) => {
-    if (err) return res.status(500).render('form', { error: 'Database error.' });
-    res.redirect('/shipments');
-  });
+
+  db.query(
+    query,
+    [date, location, tracking, client, transport, courier, status],
+    (err) => {
+      if (err) {
+        console.error('❌ DB insert error:', err);
+        return res.status(500).render('form', { error: 'Database error.' });
+      }
+      res.redirect('/shipments');
+    }
+  );
 });
 
-// Edit form
+// Edit shipment form
 router.get('/edit/:id', (req, res) => {
   const id = req.params.id;
-  db.query('SELECT * FROM shipments WHERE id = ?', [id], (err, results) => {
-    if (err || results.length === 0) return res.status(404).send('Not found');
+  const query = 'SELECT * FROM shipments WHERE id = ?';
+
+  db.query(query, [id], (err, results) => {
+    if (err || results.length === 0) {
+      return res.status(404).send('Shipment not found.');
+    }
     res.render('edit', { shipment: results[0] });
   });
 });
@@ -53,20 +69,34 @@ router.post('/edit/:id', (req, res) => {
   }
 
   const query = `
-    UPDATE shipments SET date = ?, location = ?, tracking = ?, client = ?, transport = ?, courier = ?, status = ?
+    UPDATE shipments
+    SET date = ?, location = ?, tracking = ?, client = ?, transport = ?, courier = ?, status = ?
     WHERE id = ?
   `;
-  db.query(query, [date, location, tracking, client, transport, courier, status, id], (err) => {
-    if (err) return res.status(500).send('Database error');
-    res.redirect('/shipments');
-  });
+
+  db.query(
+    query,
+    [date, location, tracking, client, transport, courier, status, id],
+    (err) => {
+      if (err) {
+        console.error('❌ Error updating shipment:', err);
+        return res.status(500).send('Database error');
+      }
+      res.redirect('/shipments');
+    }
+  );
 });
 
 // Delete shipment
 router.get('/delete/:id', (req, res) => {
   const id = req.params.id;
-  db.query('DELETE FROM shipments WHERE id = ?', [id], (err) => {
-    if (err) return res.status(500).send('Database error');
+  const query = 'DELETE FROM shipments WHERE id = ?';
+
+  db.query(query, [id], (err) => {
+    if (err) {
+      console.error('❌ Error deleting shipment:', err);
+      return res.status(500).send('Database error');
+    }
     res.redirect('/shipments');
   });
 });
