@@ -7,6 +7,7 @@ const db = require('./db');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Middleware
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
@@ -26,6 +27,12 @@ const shipmentRoutes = require('./routes/shipments');
 app.use('/', authRoutes);
 app.use('/shipments', shipmentRoutes);
 
+// Handle 404 for unknown routes
+app.use((req, res) => {
+  res.status(404).send('Page not found.');
+});
+
+// Start server
 app.listen(PORT, () => {
   console.log(`✅ Server running on http://localhost:${PORT}`);
 });
