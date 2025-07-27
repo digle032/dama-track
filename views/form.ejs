@@ -14,38 +14,38 @@
 
   <form method="POST" action="/shipments/add">
     <div class="mb-3">
-      <label for="tracking" class="form-label">Tracking Number (scan here)</label>
-      <input type="text" class="form-control" id="tracking" name="tracking" required autofocus value="<%= shipment.tracking || '' %>">
-    </div>
-
-    <div class="mb-3">
       <label for="date" class="form-label">Date</label>
-      <input type="date" class="form-control" id="date" name="date" required value="<%= shipment.date || '' %>">
+      <input type="date" class="form-control" id="date" name="date" required>
     </div>
 
     <div class="mb-3">
       <label for="location" class="form-label">Location</label>
-      <input type="text" class="form-control" id="location" name="location" required value="<%= shipment.location || '' %>">
+      <input type="text" class="form-control" id="location" name="location" required>
+    </div>
+
+    <div class="mb-3">
+      <label for="tracking" class="form-label">Tracking Number</label>
+      <input type="text" class="form-control" id="tracking" name="tracking" required autofocus>
     </div>
 
     <div class="mb-3">
       <label for="client" class="form-label">Client</label>
-      <input type="text" class="form-control" id="client" name="client" required value="<%= shipment.client || '' %>">
+      <input type="text" class="form-control" id="client" name="client" required>
     </div>
 
     <div class="mb-3">
       <label for="transport" class="form-label">Transport</label>
-      <input type="text" class="form-control" id="transport" name="transport" required value="<%= shipment.transport || '' %>">
+      <input type="text" class="form-control" id="transport" name="transport" required>
     </div>
 
     <div class="mb-3">
       <label for="courier" class="form-label">Courier</label>
-      <input type="text" class="form-control" id="courier" name="courier" required value="<%= shipment.courier || '' %>">
+      <input type="text" class="form-control" id="courier" name="courier" required>
     </div>
 
     <div class="mb-3">
-      <label for="status" class="form-label">Status (optional)</label>
-      <input type="text" class="form-control" id="status" name="status" value="<%= shipment.status || '' %>">
+      <label for="status" class="form-label">Status</label>
+      <input type="text" class="form-control" id="status" name="status" required>
     </div>
 
     <div class="text-end">

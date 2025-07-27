@@ -20,19 +20,12 @@ router.get('/add', (req, res) => {
   res.render('form', { error: null });
 });
 
-// Add shipment (status optional, all others required)
+// Add shipment (ALL fields required)
 router.post('/add', (req, res) => {
-  const tracking = req.body.tracking;
-  const date = req.body.date?.trim() === '' ? null : req.body.date;
-  const location = req.body.location;
-  const client = req.body.client;
-  const transport = req.body.transport;
-  const courier = req.body.courier;
-  const status = req.body.status?.trim() === '' ? null : req.body.status;
+  const { date, location, tracking, client, transport, courier, status } = req.body;
 
-  // Validate all required fields except status
-  if (!tracking || !date || !location || !client || !transport || !courier) {
-    return res.status(400).render('form', { error: 'All fields except status are required.' });
+  if (!date || !location || !tracking || !client || !transport || !courier || !status) {
+    return res.status(400).render('form', { error: 'All fields are required.' });
   }
 
   const query = `
@@ -40,20 +33,16 @@ router.post('/add', (req, res) => {
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `;
 
-  db.query(
-    query,
-    [date, location, tracking, client, transport, courier, status],
-    (err) => {
-      if (err) {
-        console.error('❌ DB insert error:', err);
-        return res.status(500).render('form', { error: 'Database error.' });
-      }
-      res.redirect('/shipments');
+  db.query(query, [date, location, tracking, client, transport, courier, status], (err) => {
+    if (err) {
+      console.error('❌ Insert error:', err);
+      return res.status(500).render('form', { error: 'Database error.' });
     }
-  );
+    res.redirect('/shipments');
+  });
 });
 
-// Edit shipment form
+// Edit shipment
 router.get('/edit/:id', (req, res) => {
   const id = req.params.id;
   const query = 'SELECT * FROM shipments WHERE id = ?';
@@ -66,37 +55,27 @@ router.get('/edit/:id', (req, res) => {
   });
 });
 
-// Update shipment
 router.post('/edit/:id', (req, res) => {
   const id = req.params.id;
-  const tracking = req.body.tracking;
-  const date = req.body.date?.trim() === '' ? null : req.body.date;
-  const location = req.body.location;
-  const client = req.body.client;
-  const transport = req.body.transport;
-  const courier = req.body.courier;
-  const status = req.body.status?.trim() === '' ? null : req.body.status;
+  const { date, location, tracking, client, transport, courier, status } = req.body;
 
-  if (!tracking || !date || !location || !client || !transport || !courier) {
-    return res.status(400).send('All fields except status are required.');
+  if (!date || !location || !tracking || !client || !transport || !courier || !status) {
+    return res.status(400).send('All fields are required.');
   }
 
   const query = `
-    UPDATE shipments SET date = ?, location = ?, tracking = ?, client = ?, transport = ?, courier = ?, status = ?
+    UPDATE shipments
+    SET date = ?, location = ?, tracking = ?, client = ?, transport = ?, courier = ?, status = ?
     WHERE id = ?
   `;
 
-  db.query(
-    query,
-    [date, location, tracking, client, transport, courier, status, id],
-    (err) => {
-      if (err) {
-        console.error('❌ Error updating shipment:', err);
-        return res.status(500).send('Database error');
-      }
-      res.redirect('/shipments');
+  db.query(query, [date, location, tracking, client, transport, courier, status, id], (err) => {
+    if (err) {
+      console.error('❌ Update error:', err);
+      return res.status(500).send('Database error.');
     }
-  );
+    res.redirect('/shipments');
+  });
 });
 
 // Delete shipment
@@ -106,8 +85,8 @@ router.get('/delete/:id', (req, res) => {
 
   db.query(query, [id], (err) => {
     if (err) {
-      console.error('❌ Error deleting shipment:', err);
-      return res.status(500).send('Database error');
+      console.error('❌ Delete error:', err);
+      return res.status(500).send('Database error.');
     }
     res.redirect('/shipments');
   });
