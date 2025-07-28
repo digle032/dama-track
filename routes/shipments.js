@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-// -- List shipments, with optional search --
+// -- List shipments with optional search --
 router.get('/', (req, res) => {
   const search = req.query.search;
   let query = 'SELECT * FROM shipments ORDER BY date DESC';
@@ -24,7 +24,7 @@ router.get('/', (req, res) => {
   });
 });
 
-// -- Show add shipment form --
+// -- Show shipment "Add" form --
 router.get('/new', (req, res) => {
   res.render('form', {
     shipment: null,
@@ -40,7 +40,7 @@ router.post('/new', (req, res) => {
 
   if (!date || !location || !tracking || !client) {
     return res.status(400).render('form', {
-      shipment: null,
+      shipment: { date, location, tracking, client, transport, courier, status },
       action: '/shipments/new',
       error: 'Date, location, tracking, and client are required.'
     });
@@ -51,8 +51,8 @@ router.post('/new', (req, res) => {
       (date, location, tracking, client, transport, courier, status)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `;
-
-  db.query(query,
+  db.query(
+    query,
     [
       date,
       location,
@@ -62,11 +62,11 @@ router.post('/new', (req, res) => {
       courier || '',
       status || ''
     ],
-    (err) => {
+    err => {
       if (err) {
         console.error('❌ DB insert error:', err);
         return res.status(500).render('form', {
-          shipment: null,
+          shipment: { date, location, tracking, client, transport, courier, status },
           action: '/shipments/new',
           error: 'Database error.'
         });
@@ -76,7 +76,7 @@ router.post('/new', (req, res) => {
   );
 });
 
-// -- Show edit form for an existing shipment --
+// -- Show shipment "Edit" form --
 router.get('/edit/:id', (req, res) => {
   const id = req.params.id;
   db.query('SELECT * FROM shipments WHERE id = ?', [id], (err, results) => {
@@ -91,7 +91,7 @@ router.get('/edit/:id', (req, res) => {
   });
 });
 
-// -- Handle shipment update --
+// -- Handle shipment updates --
 router.post('/edit/:id', (req, res) => {
   const id = req.params.id;
   const { date, location, tracking, client, transport, courier, status } = req.body;
@@ -109,8 +109,8 @@ router.post('/edit/:id', (req, res) => {
     SET date = ?, location = ?, tracking = ?, client = ?, transport = ?, courier = ?, status = ?
     WHERE id = ?
   `;
-
-  db.query(query,
+  db.query(
+    query,
     [
       date,
       location,
@@ -121,7 +121,7 @@ router.post('/edit/:id', (req, res) => {
       status || '',
       id
     ],
-    (err) => {
+    err => {
       if (err) {
         console.error('❌ DB update error:', err);
         return res.status(500).render('form', {
@@ -135,10 +135,10 @@ router.post('/edit/:id', (req, res) => {
   );
 });
 
-// -- Handle delete action --
+// -- Handle deletion --
 router.post('/delete/:id', (req, res) => {
   const id = req.params.id;
-  db.query('DELETE FROM shipments WHERE id = ?', [id], (err) => {
+  db.query('DELETE FROM shipments WHERE id = ?', [id], err => {
     if (err) {
       console.error('❌ Error deleting shipment:', err);
       return res.status(500).send('Database error');
