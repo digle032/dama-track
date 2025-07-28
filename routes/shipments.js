@@ -2,15 +2,15 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-// View all shipments (with optional search)
+// -- List shipments, with optional search --
 router.get('/', (req, res) => {
   const search = req.query.search;
   let query = 'SELECT * FROM shipments ORDER BY date DESC';
   const params = [];
 
   if (search) {
-    query = `SELECT * FROM shipments 
-             WHERE tracking LIKE ? OR client LIKE ? 
+    query = `SELECT * FROM shipments
+             WHERE tracking LIKE ? OR client LIKE ?
              ORDER BY date DESC`;
     params.push(`%${search}%`, `%${search}%`);
   }
@@ -24,7 +24,7 @@ router.get('/', (req, res) => {
   });
 });
 
-// Show add form
+// -- Show add shipment form --
 router.get('/new', (req, res) => {
   res.render('form', {
     shipment: null,
@@ -33,8 +33,9 @@ router.get('/new', (req, res) => {
   });
 });
 
-// Add new shipment
+// -- Handle new shipment submission --
 router.post('/new', (req, res) => {
+  console.log('🧾 form data received:', req.body);
   const { date, location, tracking, client, transport, courier, status } = req.body;
 
   if (!date || !location || !tracking || !client) {
@@ -46,13 +47,21 @@ router.post('/new', (req, res) => {
   }
 
   const query = `
-    INSERT INTO shipments (date, location, tracking, client, transport, courier, status)
+    INSERT INTO shipments
+      (date, location, tracking, client, transport, courier, status)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `;
 
-  db.query(
-    query,
-    [date, location, tracking, client, transport || '', courier || '', status || ''],
+  db.query(query,
+    [
+      date,
+      location,
+      tracking,
+      client,
+      transport || '',
+      courier || '',
+      status || ''
+    ],
     (err) => {
       if (err) {
         console.error('❌ DB insert error:', err);
@@ -67,14 +76,13 @@ router.post('/new', (req, res) => {
   );
 });
 
-// Show edit form
+// -- Show edit form for an existing shipment --
 router.get('/edit/:id', (req, res) => {
   const id = req.params.id;
   db.query('SELECT * FROM shipments WHERE id = ?', [id], (err, results) => {
     if (err || results.length === 0) {
       return res.status(404).send('Shipment not found.');
     }
-
     res.render('form', {
       shipment: results[0],
       action: `/shipments/edit/${id}`,
@@ -83,35 +91,51 @@ router.get('/edit/:id', (req, res) => {
   });
 });
 
-// Update shipment
+// -- Handle shipment update --
 router.post('/edit/:id', (req, res) => {
   const id = req.params.id;
   const { date, location, tracking, client, transport, courier, status } = req.body;
 
   if (!date || !location || !tracking || !client) {
-    return res.status(400).send('Date, location, tracking, and client are required.');
+    return res.status(400).render('form', {
+      shipment: { id, date, location, tracking, client, transport, courier, status },
+      action: `/shipments/edit/${id}`,
+      error: 'Date, location, tracking, and client are required.'
+    });
   }
 
   const query = `
-    UPDATE shipments 
+    UPDATE shipments
     SET date = ?, location = ?, tracking = ?, client = ?, transport = ?, courier = ?, status = ?
     WHERE id = ?
   `;
 
-  db.query(
-    query,
-    [date, location, tracking, client, transport || '', courier || '', status || '', id],
+  db.query(query,
+    [
+      date,
+      location,
+      tracking,
+      client,
+      transport || '',
+      courier || '',
+      status || '',
+      id
+    ],
     (err) => {
       if (err) {
         console.error('❌ DB update error:', err);
-        return res.status(500).send('Database error');
+        return res.status(500).render('form', {
+          shipment: { id, date, location, tracking, client, transport, courier, status },
+          action: `/shipments/edit/${id}`,
+          error: 'Database error.'
+        });
       }
       res.redirect('/shipments');
     }
   );
 });
 
-// Delete shipment
+// -- Handle delete action --
 router.post('/delete/:id', (req, res) => {
   const id = req.params.id;
   db.query('DELETE FROM shipments WHERE id = ?', [id], (err) => {
