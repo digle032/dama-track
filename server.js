@@ -20,18 +20,21 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.set('view engine', 'ejs');
 
 // Routes
-const authRoutes = require('./routes/auth');
-const shipmentRoutes = require('./routes/shipments');
+app.use('/', require('./routes/auth'));
+app.use('/shipments', require('./routes/shipments'));
 
-app.use('/', authRoutes);
-app.use('/shipments', shipmentRoutes);
-
-// 404 catch-all
+// 404 handler
 app.use((req, res) => {
   res.status(404).send('Page not found.');
 });
 
-// KEY FIX: Bind to all interfaces so the Render proxy can reach it
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('🔥 Global error handler:', err.stack);
+  res.status(500).send('Internal Server Error — something went wrong.');
+});
+
+// Key fix: listen on all interfaces for Render
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Server running on port ${PORT}`);
 });

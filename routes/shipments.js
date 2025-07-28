@@ -2,19 +2,15 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-// -- List shipments with optional search --
+// List shipments
 router.get('/', (req, res) => {
   const search = req.query.search;
   let query = 'SELECT * FROM shipments ORDER BY date DESC';
   const params = [];
-
   if (search) {
-    query = `SELECT * FROM shipments
-             WHERE tracking LIKE ? OR client LIKE ?
-             ORDER BY date DESC`;
+    query = `SELECT * FROM shipments WHERE tracking LIKE ? OR client LIKE ? ORDER BY date DESC`;
     params.push(`%${search}%`, `%${search}%`);
   }
-
   db.query(query, params, (err, results) => {
     if (err) {
       console.error('❌ Error fetching shipments:', err);
@@ -24,7 +20,7 @@ router.get('/', (req, res) => {
   });
 });
 
-// -- Show shipment "Add" form --
+// Show add shipment form
 router.get('/new', (req, res) => {
   res.render('form', {
     shipment: null,
@@ -33,55 +29,42 @@ router.get('/new', (req, res) => {
   });
 });
 
-// -- Handle new shipment submission --
-router.post('/new', (req, res) => {
-  console.log('🧾 form data received:', req.body);
-  const { date, location, tracking, client, transport, courier, status } = req.body;
-
-  if (!date || !location || !tracking || !client) {
-    return res.status(400).render('form', {
-      shipment: { date, location, tracking, client, transport, courier, status },
-      action: '/shipments/new',
-      error: 'Date, location, tracking, and client are required.'
-    });
-  }
-
-  const query = `
-    INSERT INTO shipments
-      (date, location, tracking, client, transport, courier, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `;
-  db.query(
-    query,
-    [
-      date,
-      location,
-      tracking,
-      client,
-      transport || '',
-      courier || '',
-      status || ''
-    ],
-    err => {
-      if (err) {
-        console.error('❌ DB insert error:', err);
-        return res.status(500).render('form', {
-          shipment: { date, location, tracking, client, transport, courier, status },
-          action: '/shipments/new',
-          error: 'Database error.'
-        });
-      }
-      res.redirect('/shipments');
+// Handle new shipment
+router.post('/new', async (req, res, next) => {
+  try {
+    console.log('🧾 form data received:', req.body);
+    const { date, location, tracking, client, transport, courier, status } = req.body;
+    if (!date || !location || !tracking || !client) {
+      return res.status(400).render('form', {
+        shipment: { date, location, tracking, client, transport, courier, status },
+        action: '/shipments/new',
+        error: 'Date, location, tracking, and client are required.'
+      });
     }
-  );
+
+    await new Promise((resolve, reject) => {
+      const insert = `INSERT INTO shipments
+        (date, location, tracking, client, transport, courier, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?)`;
+      db.query(insert, [date, location, tracking, client, transport || '', courier || '', status || ''], err =>
+        err ? reject(err) : resolve()
+      );
+    });
+
+    res.redirect('/shipments');
+  } catch (err) {
+    console.error('❌ Uncaught error in POST /new:', err);
+    next(err);
+  }
 });
 
-// -- Show shipment "Edit" form --
-router.get('/edit/:id', (req, res) => {
+// Show edit form
+router.get('/edit/:id', (req, res, next) => {
   const id = req.params.id;
   db.query('SELECT * FROM shipments WHERE id = ?', [id], (err, results) => {
     if (err || results.length === 0) {
-      return res.status(404).send('Shipment not found.');
+      const e = err || new Error('Shipment not found');
+      return next(e);
     }
     res.render('form', {
       shipment: results[0],
@@ -91,57 +74,42 @@ router.get('/edit/:id', (req, res) => {
   });
 });
 
-// -- Handle shipment updates --
-router.post('/edit/:id', (req, res) => {
-  const id = req.params.id;
-  const { date, location, tracking, client, transport, courier, status } = req.body;
-
-  if (!date || !location || !tracking || !client) {
-    return res.status(400).render('form', {
-      shipment: { id, date, location, tracking, client, transport, courier, status },
-      action: `/shipments/edit/${id}`,
-      error: 'Date, location, tracking, and client are required.'
-    });
-  }
-
-  const query = `
-    UPDATE shipments
-    SET date = ?, location = ?, tracking = ?, client = ?, transport = ?, courier = ?, status = ?
-    WHERE id = ?
-  `;
-  db.query(
-    query,
-    [
-      date,
-      location,
-      tracking,
-      client,
-      transport || '',
-      courier || '',
-      status || '',
-      id
-    ],
-    err => {
-      if (err) {
-        console.error('❌ DB update error:', err);
-        return res.status(500).render('form', {
-          shipment: { id, date, location, tracking, client, transport, courier, status },
-          action: `/shipments/edit/${id}`,
-          error: 'Database error.'
-        });
-      }
-      res.redirect('/shipments');
+// Handle update
+router.post('/edit/:id', async (req, res, next) => {
+  try {
+    const id = req.params.id;
+    const { date, location, tracking, client, transport, courier, status } = req.body;
+    if (!date || !location || !tracking || !client) {
+      return res.status(400).render('form', {
+        shipment: { id, date, location, tracking, client, transport, courier, status },
+        action: `/shipments/edit/${id}`,
+        error: 'Date, location, tracking, and client are required.'
+      });
     }
-  );
+
+    await new Promise((resolve, reject) => {
+      const update = `UPDATE shipments
+        SET date = ?, location = ?, tracking = ?, client = ?, transport = ?, courier = ?, status = ?
+        WHERE id = ?`;
+      db.query(update, [date, location, tracking, client, transport || '', courier || '', status || '', id],
+        err => err ? reject(err) : resolve()
+      );
+    });
+
+    res.redirect('/shipments');
+  } catch (err) {
+    console.error('❌ Uncaught error in POST /edit:', err);
+    next(err);
+  }
 });
 
-// -- Handle deletion --
-router.post('/delete/:id', (req, res) => {
+// Handle delete
+router.post('/delete/:id', (req, res, next) => {
   const id = req.params.id;
   db.query('DELETE FROM shipments WHERE id = ?', [id], err => {
     if (err) {
       console.error('❌ Error deleting shipment:', err);
-      return res.status(500).send('Database error');
+      return next(err);
     }
     res.redirect('/shipments');
   });
