@@ -59,15 +59,24 @@
     </div>
   </div>
 
-  <!-- Barcode scanner support -->
   <script>
     const trackingInput = document.getElementById('tracking');
     trackingInput.focus();
 
+    // Allow manual submission when needed:
     trackingInput.addEventListener('keypress', function(e) {
       if (e.key === 'Enter') {
         e.preventDefault();
+        // Remove this.form.submit() if you don't want auto-submit at all
         this.form.submit();
+      }
+    });
+
+    // Prevent auto-submit from barcode scanner Enter on scan
+    trackingInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        // Prevent default submission, but keep the scanned value
+        e.preventDefault();
       }
     });
   </script>
