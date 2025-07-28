@@ -3,17 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <title>Dashboard - Logistics</title>
-
   <!-- Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-
   <!-- Icons -->
   <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
-
-  <!-- Font: Roboto Slab -->
+  <!-- Font -->
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@600&display=swap" rel="stylesheet">
-
-  <!-- Custom styling -->
   <style>
     body {
       background-color: #f4f4f4;
@@ -21,7 +16,6 @@
       background-repeat: repeat;
       background-attachment: fixed;
     }
-
     .brand-heading {
       font-family: 'Roboto Slab', serif;
       font-weight: 600;
@@ -31,7 +25,6 @@
   </style>
 </head>
 <body>
-
   <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h3 class="brand-heading">Dama Cargo Logistics</h3>
@@ -42,7 +35,8 @@
     </div>
 
     <form method="GET" action="/shipments" class="input-group mb-3">
-      <input type="text" name="search" class="form-control" placeholder="Search tracking or client" value="<%= search || '' %>">
+      <input type="text" name="search" class="form-control" placeholder="Search tracking or client"
+        value="<%= search || '' %>">
       <button class="btn btn-primary" type="submit">Search</button>
     </form>
 
@@ -61,25 +55,22 @@
           </tr>
         </thead>
         <tbody>
-          <% if (shipments.length === 0) { %>
-            <tr><td colspan="8" class="text-center">No results found.</td></tr>
+          <% if (!shipments || shipments.length === 0) { %>
+            <tr>
+              <td colspan="8" class="text-center">No results found.</td>
+            </tr>
           <% } else { %>
             <% shipments.forEach(function(s) { %>
               <%
                 let statusClass = 'secondary';
-                const status = s.status.toLowerCase();
-                if (status === 'delivered') {
-                  statusClass = 'success';
-                } else if (status === 'in transit') {
-                  statusClass = 'primary';
-                } else if (status === 'delayed') {
-                  statusClass = 'danger';
-                } else if (status === 'pending') {
-                  statusClass = 'warning';
-                }
+                const st = (s.status || '').toLowerCase();
+                if (st === 'delivered') statusClass = 'success';
+                else if (st === 'in transit') statusClass = 'primary';
+                else if (st === 'delayed') statusClass = 'danger';
+                else if (st === 'pending') statusClass = 'warning';
               %>
               <tr>
-                <td><%= s.date.toISOString().slice(0, 10) %></td>
+                <td><%= new Date(s.date).toISOString().slice(0,10) %></td>
                 <td><a href="/shipments/edit/<%= s.id %>"><%= s.tracking %></a></td>
                 <td><%= s.client %></td>
                 <td><%= s.location %></td>
@@ -91,9 +82,7 @@
                     Edit
                   </a>
                   <form action="/shipments/delete/<%= s.id %>" method="POST" class="d-inline" onsubmit="return confirm('Delete this shipment?');">
-                    <button type="submit" class="btn btn-sm btn-danger">
-                      Delete
-                    </button>
+                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                   </form>
                 </td>
               </tr>
@@ -103,6 +92,5 @@
       </table>
     </div>
   </div>
-
 </body>
 </html>
