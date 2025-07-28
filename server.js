@@ -5,12 +5,11 @@ const path = require('path');
 const db = require('./db');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = parseInt(process.env.PORT, 10) || 3000;
 
 // Middleware
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
-
 app.use(session({
   secret: 'logisticsSecretKey',
   resave: false,
@@ -27,12 +26,12 @@ const shipmentRoutes = require('./routes/shipments');
 app.use('/', authRoutes);
 app.use('/shipments', shipmentRoutes);
 
-// Handle 404 for unknown routes
+// 404 catch-all
 app.use((req, res) => {
   res.status(404).send('Page not found.');
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
+// KEY FIX: Bind to all interfaces so the Render proxy can reach it
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ Server running on port ${PORT}`);
 });
