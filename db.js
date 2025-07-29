@@ -1,19 +1,19 @@
-const mysql = require('mysql2');
+// db.js
+const mysql = require('mysql');
 
 const connection = mysql.createConnection({
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT || 3306,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
+  host: 'yamanote.proxy.rlwy.net',     // ✅ Replace with your actual DB host
+  user: 'root',            // ✅ Replace with your DB user
+  password: 'MxtkHiCAOyiwbBMRmnogZuiPsSUBAmnW',        // ✅ Replace with your DB password
+  database: 'railway'             // ✅ Replace with your DB name
 });
 
 connection.connect((err) => {
   if (err) {
-    console.error('❌ Error connecting to MySQL:', err);
-    return;
+    console.error('❌ Database connection failed:', err);
+    throw err;
   }
-  console.log('✅ Connected to MySQL database');
+  console.log('✅ Connected to the MySQL database');
 });
 
 module.exports = connection;
