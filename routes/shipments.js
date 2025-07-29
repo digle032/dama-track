@@ -1,17 +1,12 @@
+// routes/shipments.js
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-// Middleware: require login
-router.use((req, res, next) => {
-  if (!req.session.user) {
-    return res.redirect('/login');
-  }
-  next();
-});
-
 // View all shipments
 router.get('/', (req, res) => {
+  if (!req.session.user) return res.redirect('/login');
+
   const search = req.query.search;
   let query = 'SELECT * FROM shipments ORDER BY date DESC';
   const params = [];
@@ -24,17 +19,22 @@ router.get('/', (req, res) => {
   }
 
   db.query(query, params, (err, results) => {
-    if (err) return res.status(500).send('Database error');
+    if (err) {
+      console.error('❌ Error fetching shipments:', err);
+      return res.status(500).send('Database error');
+    }
     res.render('dashboard', {
       shipments: results,
       search,
-      role: req.session.user.role
+      userRole: req.session.user.role
     });
   });
 });
 
 // Show add form
 router.get('/new', (req, res) => {
+  if (!req.session.user) return res.redirect('/login');
+
   res.render('form', {
     shipment: null,
     action: '/shipments/new',
@@ -44,13 +44,15 @@ router.get('/new', (req, res) => {
 
 // Add shipment
 router.post('/new', (req, res) => {
+  if (!req.session.user) return res.redirect('/login');
+
   const { date, location, tracking, client, transport, courier, status } = req.body;
 
   if (!date || !location || !tracking || !client) {
     return res.status(400).render('form', {
       shipment: null,
       action: '/shipments/new',
-      error: 'Required fields missing.'
+      error: 'Date, location, tracking, and client are required.'
     });
   }
 
@@ -64,7 +66,7 @@ router.post('/new', (req, res) => {
     [date, location, tracking, client, transport || '', courier || '', status || ''],
     (err) => {
       if (err) {
-        console.error('Insert error:', err);
+        console.error('❌ DB insert error:', err);
         return res.status(500).render('form', {
           shipment: null,
           action: '/shipments/new',
@@ -76,9 +78,9 @@ router.post('/new', (req, res) => {
   );
 });
 
-// Edit shipment (admin only)
+// Show edit form (admin only)
 router.get('/edit/:id', (req, res) => {
-  if (req.session.user.role !== 'admin') return res.status(403).send('Access denied.');
+  if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).send('Unauthorized');
 
   const id = req.params.id;
   db.query('SELECT * FROM shipments WHERE id = ?', [id], (err, results) => {
@@ -94,8 +96,9 @@ router.get('/edit/:id', (req, res) => {
   });
 });
 
+// Update shipment (admin only)
 router.post('/edit/:id', (req, res) => {
-  if (req.session.user.role !== 'admin') return res.status(403).send('Access denied.');
+  if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).send('Unauthorized');
 
   const id = req.params.id;
   const { date, location, tracking, client, transport, courier, status } = req.body;
@@ -110,7 +113,10 @@ router.post('/edit/:id', (req, res) => {
     query,
     [date, location, tracking, client, transport || '', courier || '', status || '', id],
     (err) => {
-      if (err) return res.status(500).send('Database error');
+      if (err) {
+        console.error('❌ DB update error:', err);
+        return res.status(500).send('Database error');
+      }
       res.redirect('/shipments');
     }
   );
@@ -118,11 +124,14 @@ router.post('/edit/:id', (req, res) => {
 
 // Delete shipment (admin only)
 router.post('/delete/:id', (req, res) => {
-  if (req.session.user.role !== 'admin') return res.status(403).send('Access denied.');
+  if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).send('Unauthorized');
 
   const id = req.params.id;
   db.query('DELETE FROM shipments WHERE id = ?', [id], (err) => {
-    if (err) return res.status(500).send('Database error');
+    if (err) {
+      console.error('❌ Error deleting shipment:', err);
+      return res.status(500).send('Database error');
+    }
     res.redirect('/shipments');
   });
 });

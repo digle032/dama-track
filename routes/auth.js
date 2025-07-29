@@ -1,3 +1,4 @@
+// routes/auth.js
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
@@ -31,6 +32,7 @@ router.post('/login', (req, res) => {
         return res.render('login', { error: 'Incorrect password' });
       }
 
+      // Save both ID and role in session
       req.session.user = { id: user.id, username: user.username, role: user.role };
       res.redirect('/shipments');
 
