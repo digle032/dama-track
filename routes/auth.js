@@ -1,47 +1,42 @@
-// routes/auth.js
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcrypt');
 const db = require('../db');
 
-// GET login page
-router.get('/login', (req, res) => {
+// Show login page
+router.get('/', (req, res) => {
   res.render('login', { error: null });
 });
 
-// POST login logic
-router.post('/login', async (req, res) => {
+// Handle login
+router.post('/login', (req, res) => {
   const { username, password } = req.body;
-  const query = 'SELECT * FROM users WHERE username = ?';
-  db.query(query, [username], async (err, results) => {
+
+  const query = 'SELECT * FROM users WHERE username = ? AND password = ?';
+  db.query(query, [username, password], (err, results) => {
     if (err) {
-      console.error('❌ Database error:', err);
-      return res.render('login', { error: 'Database error' });
+      console.error('❌ Login DB error:', err);
+      return res.render('login', { error: 'Server error.' });
     }
+
     if (results.length === 0) {
-      return res.render('login', { error: 'User not found' });
+      return res.render('login', { error: 'Invalid credentials.' });
     }
 
     const user = results[0];
-    try {
-      const match = await bcrypt.compare(password, user.password);
-      if (!match) {
-        return res.render('login', { error: 'Incorrect password' });
-      }
-      req.session.user = { id: user.id, username: user.username };
-      res.redirect('/shipments');
-    } catch (e) {
-      console.error('❌ Bcrypt error:', e);
-      res.render('login', { error: 'Something went wrong' });
-    }
+    req.session.user = {
+      id: user.id,
+      username: user.username,
+      role: user.role // 'admin' or 'user'
+    };
+
+    res.redirect('/shipments');
   });
 });
 
 // Logout
 router.get('/logout', (req, res) => {
-  req.session.destroy(() => {
-    res.redirect('/login');
-  });
+  req.session.destroy();
+  res.redirect('/');
 });
 
 module.exports = router;
