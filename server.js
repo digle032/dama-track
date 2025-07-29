@@ -1,30 +1,46 @@
 const express = require('express');
 const session = require('express-session');
-const bodyParser = require('body-parser');
 const path = require('path');
-const db = require('./db');
+const bodyParser = require('body-parser');
+const mysql = require('mysql2');
+const bcrypt = require('bcrypt');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const port = 10000;
+
+// MySQL DB setup
+const db = mysql.createConnection({
+  host: 'localhost',
+  user: 'root',
+  password: '', // Change this if needed
+  database: 'logistics'
+});
+
+db.connect((err) => {
+  if (err) throw err;
+  console.log('✅ Connected to MySQL database');
+});
+
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
 
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(session({
-  secret: 'logisticsSecretKey',
+  secret: 'secret123',
   resave: false,
   saveUninitialized: true
 }));
 
-app.use(express.static(path.join(__dirname, 'public')));
-app.set('view engine', 'ejs');
+app.use((req, res, next) => {
+  res.locals.role = req.session.role;
+  next();
+});
 
-const authRoutes = require('./routes/auth');
-const shipmentRoutes = require('./routes/shipments');
+app.use('/', require('./routes/auth'));
+app.use('/shipments', require('./routes/shipments'));
 
-app.use('/', authRoutes);
-app.use('/shipments', shipmentRoutes);
-
-app.listen(PORT, () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
+app.listen(port, () => {
+  console.log(`✅ Server running on http://localhost:${port}`);
 });
