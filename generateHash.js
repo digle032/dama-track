@@ -1,12 +1,16 @@
 const bcrypt = require('bcrypt');
 
-const password = 'admin123';
+const passwords = {
+  admin: 'admin123',
+  user: 'user123'
+};
 
-bcrypt.hash(password, 10, (err, hash) => {
-  if (err) {
-    console.error('❌ Error generating hash:', err);
-    return;
-  }
-
-  console.log('✅ Hash for admin123:', hash);
-});
+for (const [role, plainPassword] of Object.entries(passwords)) {
+  bcrypt.hash(plainPassword, 10, (err, hash) => {
+    if (err) {
+      console.error(`❌ Error hashing ${role} password:`, err);
+    } else {
+      console.log(`✅ Hashed ${role} password (${plainPassword}):`, hash);
+    }
+  });
+}
