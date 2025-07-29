@@ -1,51 +1,34 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
 const bcrypt = require('bcrypt');
+const db = require('../db');
 
-// GET login page
 router.get('/login', (req, res) => {
-  res.render('login');
+  res.render('login', { error: null });
 });
 
-// POST login
 router.post('/login', (req, res) => {
   const { username, password } = req.body;
 
-  db.query('SELECT * FROM users WHERE username = ?', [username], async (err, results) => {
-    if (err) {
-      console.error('DB query error:', err);
-      return res.status(500).send('Internal server error');
-    }
-
-    if (results.length === 0) {
-      return res.send('Invalid credentials');
-    }
+  const query = 'SELECT * FROM users WHERE username = ?';
+  db.query(query, [username], async (err, results) => {
+    if (err) return res.render('login', { error: 'Database error' });
+    if (results.length === 0) return res.render('login', { error: 'User not found' });
 
     const user = results[0];
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) return res.render('login', { error: 'Incorrect password' });
 
-    try {
-      const passwordMatch = await bcrypt.compare(password, user.password);
+    req.session.user = {
+      id: user.id,
+      username: user.username,
+      role: user.role
+    };
 
-      if (!passwordMatch) {
-        return res.send('Invalid credentials');
-      }
-
-      req.session.user = {
-        id: user.id,
-        username: user.username,
-        role: user.role
-      };
-
-      res.redirect('/dashboard');
-    } catch (error) {
-      console.error('Bcrypt error:', error);
-      res.status(500).send('Error verifying password');
-    }
+    res.redirect('/shipments');
   });
 });
 
-// Logout route
 router.get('/logout', (req, res) => {
   req.session.destroy(() => {
     res.redirect('/login');

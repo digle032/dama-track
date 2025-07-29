@@ -19,20 +19,11 @@ app.use(session({
 app.use(express.static(path.join(__dirname, 'public')));
 app.set('view engine', 'ejs');
 
-// Routes
 const authRoutes = require('./routes/auth');
 const shipmentRoutes = require('./routes/shipments');
 
 app.use('/', authRoutes);
 app.use('/shipments', shipmentRoutes);
-
-// Middleware to check login
-app.use((req, res, next) => {
-  if (!req.session.user) {
-    return res.redirect('/');
-  }
-  next();
-});
 
 app.listen(PORT, () => {
   console.log(`✅ Server running on http://localhost:${PORT}`);
