@@ -1,22 +1,13 @@
 // generateHash.js
 const bcrypt = require('bcrypt');
 
-const adminPassword = 'adminpass';
-const userPassword = 'userpass';
+const password = 'adminpass'; // Change this to the password you want to hash
 const saltRounds = 10;
 
-bcrypt.hash(adminPassword, saltRounds, (err, adminHash) => {
+bcrypt.hash(password, saltRounds, (err, hash) => {
   if (err) {
-    console.error('Error hashing admin password:', err);
+    console.error('Error hashing password:', err);
   } else {
-    console.log('✅ Admin hashed password:', adminHash);
-
-    bcrypt.hash(userPassword, saltRounds, (err, userHash) => {
-      if (err) {
-        console.error('Error hashing user password:', err);
-      } else {
-        console.log('✅ User hashed password:', userHash);
-      }
-    });
+    console.log('Hashed password:', hash);
   }
 });
