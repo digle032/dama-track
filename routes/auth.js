@@ -31,7 +31,7 @@ router.post('/login', (req, res) => {
         return res.render('login', { error: 'Incorrect password' });
       }
 
-      req.session.user = { id: user.id, username: user.username };
+      req.session.user = { id: user.id, username: user.username, role: user.role };
       res.redirect('/shipments');
 
     } catch (err) {
@@ -49,4 +49,3 @@ router.get('/logout', (req, res) => {
 });
 
 module.exports = router;
-
