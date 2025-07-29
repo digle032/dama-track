@@ -1,46 +1,39 @@
 const express = require('express');
 const session = require('express-session');
-const path = require('path');
 const bodyParser = require('body-parser');
-const mysql = require('mysql2');
-const bcrypt = require('bcrypt');
+const path = require('path');
+const db = require('./db');
 
 const app = express();
-const port = 10000;
+const PORT = process.env.PORT || 3000;
 
-// MySQL DB setup
-const db = mysql.createConnection({
-  host: 'localhost',
-  user: 'root',
-  password: '', // Change this if needed
-  database: 'logistics'
-});
-
-db.connect((err) => {
-  if (err) throw err;
-  console.log('✅ Connected to MySQL database');
-});
-
-app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
-
+// Middleware
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(bodyParser.json());
 
 app.use(session({
-  secret: 'secret123',
+  secret: 'logisticsSecretKey',
   resave: false,
   saveUninitialized: true
 }));
 
-app.use((req, res, next) => {
-  res.locals.role = req.session.role;
-  next();
+app.use(express.static(path.join(__dirname, 'public')));
+app.set('view engine', 'ejs');
+
+// Routes
+const authRoutes = require('./routes/auth');
+const shipmentRoutes = require('./routes/shipments');
+
+app.use('/', authRoutes);
+app.use('/shipments', shipmentRoutes);
+
+// Handle 404 for unknown routes
+app.use((req, res) => {
+  res.status(404).send('Page not found.');
 });
 
-app.use('/', require('./routes/auth'));
-app.use('/shipments', require('./routes/shipments'));
-
-app.listen(port, () => {
-  console.log(`✅ Server running on http://localhost:${port}`);
+// Start server
+app.listen(PORT, () => {
+  console.log(`✅ Server running on http://localhost:${PORT}`);
 });
+

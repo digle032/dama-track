@@ -13,10 +13,7 @@
         <h4><%= shipment ? 'Edit Shipment' : 'Add Shipment' %></h4>
       </div>
       <div class="card-body">
-        <% if (error) { %>
-          <div class="alert alert-danger"><%= error %></div>
-        <% } %>
-        <form method="POST" action="<%= shipment ? '/shipments/edit/' + shipment.id : '/shipments/new' %>">
+        <form method="POST" action="<%= action %>">
           <div class="mb-3">
             <label class="form-label">Date</label>
             <input type="datetime-local" name="date" class="form-control"
@@ -41,12 +38,12 @@
 
           <div class="mb-3">
             <label class="form-label">Transport</label>
-            <input type="text" name="transport" class="form-control" value="<%= shipment?.transport || '' %>" required>
+            <input type="text" name="transport" class="form-control" value="<%= shipment?.transport || '' %>">
           </div>
 
           <div class="mb-3">
             <label class="form-label">Courier</label>
-            <input type="text" name="courier" class="form-control" value="<%= shipment?.courier || '' %>" required>
+            <input type="text" name="courier" class="form-control" value="<%= shipment?.courier || '' %>">
           </div>
 
           <div class="mb-3">
@@ -70,9 +67,7 @@
     trackingInput.addEventListener('keypress', function(e) {
       if (e.key === 'Enter') {
         e.preventDefault();
-        setTimeout(() => {
-          this.form.submit();
-        }, 200); // slight delay to allow barcode scanner to finish
+        this.form.submit();
       }
     });
   </script>
