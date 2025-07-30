@@ -38,7 +38,14 @@
 
           <div class="mb-3">
             <label class="form-label">Transport</label>
-            <input type="text" name="transport" class="form-control" value="<%= shipment?.transport || '' %>">
+            <select name="transport" class="form-control">
+              <option value="">-- Select Transport --</option>
+              <option value="FedEx" <%= shipment?.transport === 'FedEx' ? 'selected' : '' %>>FedEx</option>
+              <option value="UPS" <%= shipment?.transport === 'UPS' ? 'selected' : '' %>>UPS</option>
+              <option value="Amazon" <%= shipment?.transport === 'Amazon' ? 'selected' : '' %>>Amazon</option>
+              <option value="USPS" <%= shipment?.transport === 'USPS' ? 'selected' : '' %>>USPS</option>
+              <option value="Other" <%= shipment?.transport === 'Other' ? 'selected' : '' %>>Other</option>
+            </select>
           </div>
 
           <div class="mb-3">
@@ -60,6 +67,11 @@
               <option value="Processed" <%= shipment?.status === 'Processed' ? 'selected' : '' %>>Processed</option>
               <option value="Unknown" <%= shipment?.status === 'Unknown' ? 'selected' : '' %>>Unknown</option>
             </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea name="description" class="form-control" rows="3"><%= shipment?.description || '' %></textarea>
           </div>
 
           <button type="submit" class="btn btn-success w-100">
