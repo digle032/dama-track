@@ -53,7 +53,7 @@
             <th>Date</th>
             <th>Tracking</th>
             <th>Client</th>
-            <th>Location</th>
+            <th class="w-25">Description</th>
             <th>Transport</th>
             <th>Courier</th>
             <th>Status</th>
@@ -86,7 +86,7 @@
                   </a>
                 </td>
                 <td><%= s.client %></td>
-                <td><%= s.location %></td>
+                <td><%= s.location %></td> <!-- Label shown as 'Description' now -->
                 <td><%= s.transport %></td>
                 <td><%= s.courier %></td>
                 <td><span class="badge bg-<%= statusClass %>"><%= s.status %></span></td>
