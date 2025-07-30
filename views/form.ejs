@@ -38,28 +38,24 @@
 
           <div class="mb-3">
             <label class="form-label">Transport</label>
-            <input type="text" name="transport" class="form-control" value="<%= shipment?.transport || '' %>">
+            <select name="transport" class="form-select">
+              <option value="">-- Select Transport --</option>
+              <option value="FedEx" <%= shipment?.transport === 'FedEx' ? 'selected' : '' %>>FedEx</option>
+              <option value="UPS" <%= shipment?.transport === 'UPS' ? 'selected' : '' %>>UPS</option>
+              <option value="Amazon" <%= shipment?.transport === 'Amazon' ? 'selected' : '' %>>Amazon</option>
+              <option value="USPS" <%= shipment?.transport === 'USPS' ? 'selected' : '' %>>USPS</option>
+              <option value="Other" <%= shipment?.transport === 'Other' ? 'selected' : '' %>>Other</option>
+            </select>
           </div>
 
           <div class="mb-3">
             <label class="form-label">Courier</label>
-            <select name="courier" class="form-control">
-              <option value="">-- Select Courier --</option>
-              <option value="Zipcode" <%= shipment?.courier === 'Zipcode' ? 'selected' : '' %>>Zipcode</option>
-              <option value="Release" <%= shipment?.courier === 'Release' ? 'selected' : '' %>>Release</option>
-              <option value="Translogic" <%= shipment?.courier === 'Translogic' ? 'selected' : '' %>>Translogic</option>
-              <option value="Mc Logistics" <%= shipment?.courier === 'Mc Logistics' ? 'selected' : '' %>>Mc Logistics</option>
-              <option value="Unknown" <%= shipment?.courier === 'Unknown' ? 'selected' : '' %>>Unknown</option>
-            </select>
+            <input type="text" name="courier" class="form-control" value="<%= shipment?.courier || '' %>">
           </div>
 
           <div class="mb-3">
             <label class="form-label">Status</label>
-            <select name="status" class="form-control">
-              <option value="">-- Select Status --</option>
-              <option value="Processed" <%= shipment?.status === 'Processed' ? 'selected' : '' %>>Processed</option>
-              <option value="Unknown" <%= shipment?.status === 'Unknown' ? 'selected' : '' %>>Unknown</option>
-            </select>
+            <input type="text" name="status" class="form-control" value="<%= shipment?.status || '' %>">
           </div>
 
           <button type="submit" class="btn btn-success w-100">
