@@ -16,12 +16,11 @@
         <% if (error) { %>
           <div class="alert alert-danger"><%= error %></div>
         <% } %>
-
         <form method="POST" action="<%= action %>">
           <div class="mb-3">
             <label class="form-label">Date</label>
             <input type="datetime-local" name="date" class="form-control"
-              value="<%= shipment?.date ? shipment.date.toISOString().slice(0,16) : '' %>" required>
+              value="<%= shipment?.date ? new Date(shipment.date).toISOString().slice(0,16) : '' %>" required>
           </div>
 
           <div class="mb-3">
@@ -86,6 +85,7 @@
     </div>
   </div>
 
+  <!-- Barcode scanner support -->
   <script>
     const trackingInput = document.getElementById('tracking');
     trackingInput.focus();

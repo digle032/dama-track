@@ -1,4 +1,3 @@
-// routes/shipments.js
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
@@ -35,10 +34,7 @@ router.get('/new', (req, res) => {
 // Handle submission of new shipment
 router.post('/new', async (req, res) => {
   try {
-    const {
-      date, location, tracking, client,
-      transport = '', courier = '', status = '', description = ''
-    } = req.body;
+    const { date, location, tracking, client, transport = '', courier = '', status = '', description = '' } = req.body;
 
     if (!date || !location || !tracking || !client) {
       return res.status(400).render('form', {
@@ -85,8 +81,12 @@ router.get('/edit/:id', (req, res) => {
       console.error('❌ Shipment not found or DB error:', err);
       return res.status(404).send('Shipment not found.');
     }
+    const shipment = results[0];
+    if (shipment.date && !(shipment.date instanceof Date)) {
+      shipment.date = new Date(shipment.date);
+    }
     res.render('form', {
-      shipment: results[0],
+      shipment,
       action: `/shipments/edit/${id}`,
       error: null
     });
@@ -96,10 +96,7 @@ router.get('/edit/:id', (req, res) => {
 // Handle update submission
 router.post('/edit/:id', (req, res) => {
   const id = req.params.id;
-  const {
-    date, location, tracking, client,
-    transport = '', courier = '', status = '', description = ''
-  } = req.body;
+  const { date, location, tracking, client, transport = '', courier = '', status = '', description = '' } = req.body;
 
   if (!date || !location || !tracking || !client) {
     return res.status(400).render('form', {
