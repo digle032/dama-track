@@ -38,7 +38,7 @@
 
           <div class="mb-3">
             <label class="form-label">Transport</label>
-            <select name="transport" class="form-select">
+            <select name="transport" class="form-control">
               <option value="">-- Select Transport --</option>
               <option value="FedEx" <%= shipment?.transport === 'FedEx' ? 'selected' : '' %>>FedEx</option>
               <option value="UPS" <%= shipment?.transport === 'UPS' ? 'selected' : '' %>>UPS</option>
@@ -50,12 +50,23 @@
 
           <div class="mb-3">
             <label class="form-label">Courier</label>
-            <input type="text" name="courier" class="form-control" value="<%= shipment?.courier || '' %>">
+            <select name="courier" class="form-control">
+              <option value="">-- Select Courier --</option>
+              <option value="Zipcode" <%= shipment?.courier === 'Zipcode' ? 'selected' : '' %>>Zipcode</option>
+              <option value="Release" <%= shipment?.courier === 'Release' ? 'selected' : '' %>>Release</option>
+              <option value="Translogic" <%= shipment?.courier === 'Translogic' ? 'selected' : '' %>>Translogic</option>
+              <option value="Mc Logistics" <%= shipment?.courier === 'Mc Logistics' ? 'selected' : '' %>>Mc Logistics</option>
+              <option value="Unknown" <%= shipment?.courier === 'Unknown' ? 'selected' : '' %>>Unknown</option>
+            </select>
           </div>
 
           <div class="mb-3">
             <label class="form-label">Status</label>
-            <input type="text" name="status" class="form-control" value="<%= shipment?.status || '' %>">
+            <select name="status" class="form-control">
+              <option value="">-- Select Status --</option>
+              <option value="Processed" <%= shipment?.status === 'Processed' ? 'selected' : '' %>>Processed</option>
+              <option value="Unknown" <%= shipment?.status === 'Unknown' ? 'selected' : '' %>>Unknown</option>
+            </select>
           </div>
 
           <button type="submit" class="btn btn-success w-100">
