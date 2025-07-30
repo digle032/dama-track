@@ -69,6 +69,12 @@
             </select>
           </div>
 
+          <!-- ✅ Description field added here -->
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea name="description" class="form-control" rows="3"><%= shipment?.description || '' %></textarea>
+          </div>
+
           <button type="submit" class="btn btn-success w-100">
             <%= shipment ? 'Update Shipment' : 'Add Shipment' %>
           </button>
