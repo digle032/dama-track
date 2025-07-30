@@ -38,8 +38,7 @@
 
           <div class="mb-3">
             <label class="form-label">Transport</label>
-            <select name="transport" class="form-control">
-              <option value="">-- Select Transport --</option>
+            <select name="transport" class="form-select">
               <option value="FedEx" <%= shipment?.transport === 'FedEx' ? 'selected' : '' %>>FedEx</option>
               <option value="UPS" <%= shipment?.transport === 'UPS' ? 'selected' : '' %>>UPS</option>
               <option value="Amazon" <%= shipment?.transport === 'Amazon' ? 'selected' : '' %>>Amazon</option>
@@ -50,8 +49,7 @@
 
           <div class="mb-3">
             <label class="form-label">Courier</label>
-            <select name="courier" class="form-control">
-              <option value="">-- Select Courier --</option>
+            <select name="courier" class="form-select">
               <option value="Zipcode" <%= shipment?.courier === 'Zipcode' ? 'selected' : '' %>>Zipcode</option>
               <option value="Release" <%= shipment?.courier === 'Release' ? 'selected' : '' %>>Release</option>
               <option value="Translogic" <%= shipment?.courier === 'Translogic' ? 'selected' : '' %>>Translogic</option>
@@ -62,8 +60,7 @@
 
           <div class="mb-3">
             <label class="form-label">Status</label>
-            <select name="status" class="form-control">
-              <option value="">-- Select Status --</option>
+            <select name="status" class="form-select">
               <option value="Processed" <%= shipment?.status === 'Processed' ? 'selected' : '' %>>Processed</option>
               <option value="Unknown" <%= shipment?.status === 'Unknown' ? 'selected' : '' %>>Unknown</option>
             </select>
@@ -82,11 +79,9 @@
     </div>
   </div>
 
-  <!-- Barcode scanner support -->
   <script>
     const trackingInput = document.getElementById('tracking');
     trackingInput.focus();
-
     trackingInput.addEventListener('keypress', function(e) {
       if (e.key === 'Enter') {
         e.preventDefault();
