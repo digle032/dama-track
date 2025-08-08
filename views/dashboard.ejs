@@ -81,19 +81,22 @@
               <tr>
                 <td><%= s.date.toISOString().slice(0, 10) %></td>
                 <td>
-                  <a href="/shipments/edit/<%= s.id %>" onclick="return checkPassword()">
+                  <a href="/shipments/edit/<%= s.id %>">
                     <%= s.tracking %>
                   </a>
                 </td>
                 <td><%= s.client %></td>
-                <td><%= s.location %></td> <!-- Label shown as 'Description' now -->
+                <td><%= s.location %></td>
                 <td><%= s.transport %></td>
                 <td><%= s.courier %></td>
                 <td><span class="badge bg-<%= statusClass %>"><%= s.status %></span></td>
                 <td class="text-center">
-                  <a href="/shipments/edit/<%= s.id %>" class="btn btn-sm btn-warning me-1" onclick="return checkPassword()">
+                  <!-- Edit without password -->
+                  <a href="/shipments/edit/<%= s.id %>" class="btn btn-sm btn-warning me-1">
                     <i class="fas fa-edit"></i> Edit
                   </a>
+
+                  <!-- Delete still requires password -->
                   <form action="/shipments/delete/<%= s.id %>" method="POST" class="d-inline" onsubmit="return checkPassword()">
                     <button class="btn btn-sm btn-danger">
                       <i class="fas fa-trash-alt"></i> Delete
