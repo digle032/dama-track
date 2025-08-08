@@ -91,12 +91,9 @@
                 <td><%= s.courier %></td>
                 <td><span class="badge bg-<%= statusClass %>"><%= s.status %></span></td>
                 <td class="text-center">
-                  <!-- Edit without password -->
                   <a href="/shipments/edit/<%= s.id %>" class="btn btn-sm btn-warning me-1">
                     <i class="fas fa-edit"></i> Edit
                   </a>
-
-                  <!-- Delete still requires password -->
                   <form action="/shipments/delete/<%= s.id %>" method="POST" class="d-inline" onsubmit="return checkPassword()">
                     <button class="btn btn-sm btn-danger">
                       <i class="fas fa-trash-alt"></i> Delete
@@ -113,8 +110,8 @@
 
   <script>
     function checkPassword() {
-      const entered = prompt("Enter admin password to proceed:");
-      return entered === "pass4554";
+      const entered = prompt("Enter admin password to delete this shipment:");
+      return entered === "dama2025";
     }
   </script>
 
