@@ -1,5 +1,4 @@
 // routes/shipments.js
-
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
@@ -21,6 +20,63 @@ router.get('/', (req, res) => {
       return res.status(500).send('Database error');
     }
     res.render('dashboard', { shipments: results, search });
+  });
+});
+
+// Export all shipments to CSV (Excel-friendly)
+router.get('/export', (req, res) => {
+  const sql = 'SELECT * FROM shipments ORDER BY date DESC';
+  db.query(sql, (err, rows) => {
+    if (err) {
+      console.error('❌ Error exporting shipments:', err);
+      return res.status(500).send('Database error');
+    }
+
+    // Helper to safely format CSV values
+    const toCsvValue = (v) => {
+      if (v === null || v === undefined) return '';
+      const s = String(v);
+      if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+      return s;
+    };
+
+    // Format date as YYYY-MM-DD HH:MM (Excel-friendly)
+    const fmtDate = (d) => {
+      try {
+        const dt = d instanceof Date ? d : new Date(d);
+        if (isNaN(dt)) return '';
+        const pad = (n) => String(n).padStart(2, '0');
+        const Y = dt.getFullYear();
+        const M = pad(dt.getMonth() + 1);
+        const D = pad(dt.getDate());
+        const h = pad(dt.getHours());
+        const m = pad(dt.getMinutes());
+        return `${Y}-${M}-${D} ${h}:${m}`;
+      } catch {
+        return '';
+      }
+    };
+
+    const headers = ['Date', 'Tracking', 'Client', 'Description', 'Transport', 'Courier', 'Status'];
+    const lines = [headers.map(toCsvValue).join(',')];
+
+    for (const r of rows) {
+      lines.push([
+        fmtDate(r.date),
+        toCsvValue(r.tracking),
+        toCsvValue(r.client),
+        toCsvValue(r.location),   // stored as "location", shown as "Description"
+        toCsvValue(r.transport),
+        toCsvValue(r.courier),
+        toCsvValue(r.status)
+      ].join(','));
+    }
+
+    const csv = lines.join('\n');
+    const stamp = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="shipments_backup_${stamp}.csv"`);
+    res.send(csv);
   });
 });
 
