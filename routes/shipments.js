@@ -2,22 +2,24 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const ExcelJS = require('exceljs'); // Excel export
+const ExcelJS = require('exceljs'); // for true .xlsx export
 
-// Helpers to normalize inputs (scanner-safe) and fix DATETIME format
+// ---------- Helpers (scanner-safe + MySQL DATETIME) ----------
 function toMySQLDateTime(input) {
-  if (!input) return null;
+  if (!input) return null;                 // expect "YYYY-MM-DDTHH:MM"
   const s = String(input).trim();
   const withSpace = s.replace('T', ' ');
   if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(withSpace)) return withSpace + ':00';
-  return withSpace;
+  return withSpace; // if already has :ss or full datetime
 }
 function cleanText(s) {
   return (s ?? '').toString().replace(/\s+/g, ' ').trim();
 }
 function cleanTracking(s) {
+  // scanners sometimes add CR/LF or spaces; also prevents "empty after delete"
   return (s ?? '').toString().replace(/\s+/g, '').trim();
 }
+// -------------------------------------------------------------
 
 // List all shipments
 router.get('/', (req, res) => {
@@ -48,64 +50,78 @@ router.get('/new', (req, res) => {
   });
 });
 
-// Handle submission of new shipment
-router.post('/new', async (req, res) => {
-  try {
-    console.log('🧾 form data received:', req.body);
+// Handle submission of new shipment (with strong validation + duplicate pre-check)
+router.post('/new', (req, res) => {
+  const dateRaw = req.body.date;
+  const date = toMySQLDateTime(dateRaw);
 
-    const dateRaw = req.body.date;
-    const date = toMySQLDateTime(dateRaw);
+  const location = cleanText(req.body.location);
+  const tracking = cleanTracking(req.body.tracking);
+  const client = cleanText(req.body.client);
+  const transport = cleanText(req.body.transport || '');
+  const courier = cleanText(req.body.courier || '');
+  const status = cleanText(req.body.status || '');
 
-    const location = cleanText(req.body.location);
-    const tracking = cleanTracking(req.body.tracking);
-    const client = cleanText(req.body.client);
-    const transport = cleanText(req.body.transport || '');
-    const courier = cleanText(req.body.courier || '');
-    const status = cleanText(req.body.status || '');
+  // Required checks (covers the "deleted then scanned new" scenario)
+  if (!date || !location || !tracking || !client) {
+    return res.status(400).render('form', {
+      shipment: { date: dateRaw, location, tracking, client, transport, courier, status },
+      action: '/shipments/new',
+      error: 'Date, description, tracking, and client are required.'
+    });
+  }
 
-    if (!date || !location || !tracking || !client) {
+  // Pre-check duplicate tracking for NEW
+  const dupSql = 'SELECT id FROM shipments WHERE tracking = ? LIMIT 1';
+  db.query(dupSql, [tracking], (dupErr, dupRows) => {
+    if (dupErr) {
+      console.error('❌ Error checking duplicate on insert:', dupErr);
+      return res.status(500).render('form', {
+        shipment: { date: dateRaw, location, tracking, client, transport, courier, status },
+        action: '/shipments/new',
+        error: 'Database error while checking duplicates.'
+      });
+    }
+
+    if (dupRows.length > 0) {
       return res.status(400).render('form', {
         shipment: { date: dateRaw, location, tracking, client, transport, courier, status },
         action: '/shipments/new',
-        error: 'Date, description, tracking, and client are required.'
+        error: `Tracking number "${tracking}" already exists.`
       });
     }
 
     const insert = `
-      INSERT INTO shipments
-        (date, location, tracking, client, transport, courier, status)
+      INSERT INTO shipments (date, location, tracking, client, transport, courier, status)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
-
-    await new Promise((resolve, reject) => {
-      db.query(insert, [date, location, tracking, client, transport, courier, status], (err) =>
-        err ? reject(err) : resolve()
-      );
+    db.query(insert, [date, location, tracking, client, transport, courier, status], (err) => {
+      if (err) {
+        console.error('❌ Uncaught error in POST /new:', err);
+        // Fallback friendly messages
+        if (err.code === 'ER_DUP_ENTRY') {
+          return res.status(400).render('form', {
+            shipment: { date: dateRaw, location, tracking, client, transport, courier, status },
+            action: '/shipments/new',
+            error: `Tracking number "${tracking}" already exists.`
+          });
+        }
+        if (err.errno === 1292) {
+          return res.status(400).render('form', {
+            shipment: { date: dateRaw, location, tracking, client, transport, courier, status },
+            action: '/shipments/new',
+            error: 'Invalid Date/Time format. Please reselect the date/time.'
+          });
+        }
+        return res.status(500).render('form', {
+          shipment: { date: dateRaw, location, tracking, client, transport, courier, status },
+          action: '/shipments/new',
+          error: 'An unexpected error occurred.'
+        });
+      }
+      return res.redirect('/shipments');
     });
-
-    return res.redirect('/shipments');
-  } catch (err) {
-    if (err && err.code === 'ER_DUP_ENTRY') {
-      return res.status(400).render('form', {
-        shipment: req.body,
-        action: '/shipments/new',
-        error: `Tracking number "${cleanTracking(req.body.tracking)}" already exists.`
-      });
-    }
-    if (err && err.errno === 1292) { // Incorrect datetime value
-      return res.status(400).render('form', {
-        shipment: req.body,
-        action: '/shipments/new',
-        error: 'Invalid Date/Time format. Please reselect the date/time.'
-      });
-    }
-    console.error('❌ Uncaught error in POST /new:', err);
-    return res.status(500).render('form', {
-      shipment: req.body,
-      action: '/shipments/new',
-      error: 'An unexpected error occurred.'
-    });
-  }
+  });
 });
 
 // Show shipment edit form
@@ -124,7 +140,7 @@ router.get('/edit/:id', (req, res) => {
   });
 });
 
-// Handle update submission
+// Handle update submission (duplicate pre-check on EDIT)
 router.post('/edit/:id', (req, res) => {
   const id = req.params.id;
 
@@ -140,42 +156,62 @@ router.post('/edit/:id', (req, res) => {
 
   if (!date || !location || !tracking || !client) {
     return res.status(400).render('form', {
-      shipment: { date: dateRaw, location, tracking, client, transport, courier, status },
+      shipment: { id, date: dateRaw, location, tracking, client, transport, courier, status },
       action: `/shipments/edit/${id}`,
       error: 'Date, description, tracking, and client are required.'
     });
   }
 
-  const update = `
-    UPDATE shipments
-    SET date = ?, location = ?, tracking = ?, client = ?, transport = ?, courier = ?, status = ?
-    WHERE id = ?
-  `;
-
-  db.query(update, [date, location, tracking, client, transport, courier, status, id], err => {
-    if (err) {
-      if (err.code === 'ER_DUP_ENTRY') {
-        return res.status(400).render('form', {
-          shipment: req.body,
-          action: `/shipments/edit/${id}`,
-          error: `Tracking number "${tracking}" already exists.`
-        });
-      }
-      if (err.errno === 1292) {
-        return res.status(400).render('form', {
-          shipment: req.body,
-          action: `/shipments/edit/${id}`,
-          error: 'Invalid Date/Time format. Please reselect the date/time.'
-        });
-      }
-      console.error('❌ Error updating shipment:', err);
+  // Pre-check: is this tracking used by a different row?
+  const dupSql = 'SELECT id FROM shipments WHERE tracking = ? AND id <> ? LIMIT 1';
+  db.query(dupSql, [tracking, id], (dupErr, dupRows) => {
+    if (dupErr) {
+      console.error('❌ Error checking duplicate tracking (edit):', dupErr);
       return res.status(500).render('form', {
-        shipment: req.body,
+        shipment: { id, date: dateRaw, location, tracking, client, transport, courier, status },
         action: `/shipments/edit/${id}`,
-        error: 'Database error.'
+        error: 'Database error while checking duplicates.'
       });
     }
-    res.redirect('/shipments');
+
+    if (dupRows.length > 0) {
+      return res.status(400).render('form', {
+        shipment: { id, date: dateRaw, location, tracking, client, transport, courier, status },
+        action: `/shipments/edit/${id}`,
+        error: `Tracking number "${tracking}" is already used by another shipment.`
+      });
+    }
+
+    const update = `
+      UPDATE shipments
+      SET date = ?, location = ?, tracking = ?, client = ?, transport = ?, courier = ?, status = ?
+      WHERE id = ?
+    `;
+    db.query(update, [date, location, tracking, client, transport, courier, status, id], (err) => {
+      if (err) {
+        console.error('❌ Error updating shipment:', err);
+        if (err.code === 'ER_DUP_ENTRY') {
+          return res.status(400).render('form', {
+            shipment: { id, date: dateRaw, location, tracking, client, transport, courier, status },
+            action: `/shipments/edit/${id}`,
+            error: `Tracking number "${tracking}" already exists.`
+          });
+        }
+        if (err.errno === 1292) {
+          return res.status(400).render('form', {
+            shipment: { id, date: dateRaw, location, tracking, client, transport, courier, status },
+            action: `/shipments/edit/${id}`,
+            error: 'Invalid Date/Time format. Please reselect the date/time.'
+          });
+        }
+        return res.status(500).render('form', {
+          shipment: { id, date: dateRaw, location, tracking, client, transport, courier, status },
+          action: `/shipments/edit/${id}`,
+          error: 'An unexpected error occurred while saving.'
+        });
+      }
+      return res.redirect('/shipments');
+    });
   });
 });
 
@@ -191,7 +227,7 @@ router.post('/delete/:id', (req, res) => {
   });
 });
 
-// NEW: Backup to Excel
+// Backup to Excel
 router.get('/backup', (req, res) => {
   const sql = `
     SELECT id, date, tracking, client, location, transport, courier, status
@@ -208,19 +244,17 @@ router.get('/backup', (req, res) => {
       const workbook = new ExcelJS.Workbook();
       const sheet = workbook.addWorksheet('Shipments');
 
-      // Columns
       sheet.columns = [
-        { header: 'ID', key: 'id', width: 8 },
-        { header: 'Date', key: 'date', width: 20 },
-        { header: 'Tracking', key: 'tracking', width: 24 },
-        { header: 'Client', key: 'client', width: 24 },
-        { header: 'Description', key: 'location', width: 40 },
-        { header: 'Transport', key: 'transport', width: 16 },
-        { header: 'Courier', key: 'courier', width: 18 },
-        { header: 'Status', key: 'status', width: 16 }
+        { header: 'ID',         key: 'id',       width: 8  },
+        { header: 'Date',       key: 'date',     width: 20 },
+        { header: 'Tracking',   key: 'tracking', width: 24 },
+        { header: 'Client',     key: 'client',   width: 24 },
+        { header: 'Description',key: 'location', width: 40 },
+        { header: 'Transport',  key: 'transport',width: 16 },
+        { header: 'Courier',    key: 'courier',  width: 18 },
+        { header: 'Status',     key: 'status',   width: 16 }
       ];
 
-      // Rows
       rows.forEach(r => {
         const dateVal = (r.date instanceof Date) ? r.date : new Date(r.date);
         sheet.addRow({
@@ -235,10 +269,8 @@ router.get('/backup', (req, res) => {
         });
       });
 
-      // Date formatting for Excel
       sheet.getColumn('date').numFmt = 'yyyy-mm-dd hh:mm';
 
-      // Set headers for download
       const now = new Date();
       const pad = n => String(n).padStart(2, '0');
       const filename = `shipments_backup_${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.xlsx`;
