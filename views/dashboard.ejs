@@ -35,8 +35,12 @@
   <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h3 class="brand-heading">Dama Cargo Logistics</h3>
-      <div>
-        <a href="/shipments/new" class="btn btn-success me-2">+ Add Shipment</a>
+      <div class="d-flex gap-2">
+        <a href="/shipments/new" class="btn btn-success">+ Add Shipment</a>
+        <!-- Backup button -->
+        <a href="/shipments/backup" class="btn btn-secondary">
+          <i class="fas fa-file-excel"></i> Backup to Excel
+        </a>
         <a href="/logout" class="btn btn-outline-danger">Logout</a>
       </div>
     </div>
@@ -83,13 +87,12 @@
                   <%= (s.date && s.date.toISOString) ? s.date.toISOString().slice(0, 10) : String(s.date).slice(0,10) %>
                 </td>
                 <td>
-                  <!-- Edit should NOT require password -->
                   <a href="/shipments/edit/<%= s.id %>">
                     <%= s.tracking %>
                   </a>
                 </td>
                 <td><%= s.client %></td>
-                <td><%= s.location %></td> <!-- Label shown as 'Description' -->
+                <td><%= s.location %></td>
                 <td><%= s.transport %></td>
                 <td><%= s.courier %></td>
                 <td><span class="badge bg-<%= statusClass %>"><%= s.status %></span></td>

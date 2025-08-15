@@ -2,14 +2,13 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const ExcelJS = require('exceljs'); // Excel export
 
 // Helpers to normalize inputs (scanner-safe) and fix DATETIME format
 function toMySQLDateTime(input) {
-  // Accepts "YYYY-MM-DDTHH:MM" from <input type="datetime-local"> and returns "YYYY-MM-DD HH:MM:SS"
   if (!input) return null;
   const s = String(input).trim();
   const withSpace = s.replace('T', ' ');
-  // If missing seconds, add ":00"
   if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(withSpace)) return withSpace + ':00';
   return withSpace;
 }
@@ -17,7 +16,6 @@ function cleanText(s) {
   return (s ?? '').toString().replace(/\s+/g, ' ').trim();
 }
 function cleanTracking(s) {
-  // Many scanners inject whitespace or CR/LF — strip all whitespace inside the code
   return (s ?? '').toString().replace(/\s+/g, '').trim();
 }
 
@@ -190,6 +188,70 @@ router.post('/delete/:id', (req, res) => {
       return res.status(500).send('Database error');
     }
     res.redirect('/shipments');
+  });
+});
+
+// NEW: Backup to Excel
+router.get('/backup', (req, res) => {
+  const sql = `
+    SELECT id, date, tracking, client, location, transport, courier, status
+    FROM shipments
+    ORDER BY date DESC
+  `;
+  db.query(sql, [], async (err, rows) => {
+    if (err) {
+      console.error('❌ Error exporting shipments:', err);
+      return res.status(500).send('Database error during export');
+    }
+
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Shipments');
+
+      // Columns
+      sheet.columns = [
+        { header: 'ID', key: 'id', width: 8 },
+        { header: 'Date', key: 'date', width: 20 },
+        { header: 'Tracking', key: 'tracking', width: 24 },
+        { header: 'Client', key: 'client', width: 24 },
+        { header: 'Description', key: 'location', width: 40 },
+        { header: 'Transport', key: 'transport', width: 16 },
+        { header: 'Courier', key: 'courier', width: 18 },
+        { header: 'Status', key: 'status', width: 16 }
+      ];
+
+      // Rows
+      rows.forEach(r => {
+        const dateVal = (r.date instanceof Date) ? r.date : new Date(r.date);
+        sheet.addRow({
+          id: r.id,
+          date: dateVal,
+          tracking: r.tracking,
+          client: r.client,
+          location: r.location,
+          transport: r.transport,
+          courier: r.courier,
+          status: r.status
+        });
+      });
+
+      // Date formatting for Excel
+      sheet.getColumn('date').numFmt = 'yyyy-mm-dd hh:mm';
+
+      // Set headers for download
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const filename = `shipments_backup_${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.xlsx`;
+
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+      await workbook.xlsx.write(res);
+      res.end();
+    } catch (e) {
+      console.error('❌ Error generating Excel:', e);
+      return res.status(500).send('Failed to generate Excel file');
+    }
   });
 });
 
