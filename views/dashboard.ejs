@@ -35,9 +35,8 @@
   <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h3 class="brand-heading">Dama Cargo Logistics</h3>
-      <div class="d-flex gap-2">
-        <a href="/shipments/new" class="btn btn-success">+ Add Shipment</a>
-        <a href="/shipments/export" class="btn btn-outline-secondary">Backup (Excel)</a>
+      <div>
+        <a href="/shipments/new" class="btn btn-success me-2">+ Add Shipment</a>
         <a href="/logout" class="btn btn-outline-danger">Logout</a>
       </div>
     </div>
@@ -68,26 +67,30 @@
             <% shipments.forEach(function(s) { %>
               <%
                 let statusClass = 'secondary';
-                const status = s.status.toLowerCase();
-                if (status === 'delivered') {
+                const statusLower = (s.status || '').toString().toLowerCase();
+                if (statusLower === 'delivered') {
                   statusClass = 'success';
-                } else if (status === 'in transit') {
+                } else if (statusLower === 'in transit') {
                   statusClass = 'primary';
-                } else if (status === 'delayed') {
+                } else if (statusLower === 'delayed') {
                   statusClass = 'danger';
-                } else if (status === 'pending') {
+                } else if (statusLower === 'pending') {
                   statusClass = 'warning';
                 }
               %>
               <tr>
-                <td><%= s.date.toISOString().slice(0, 10) %></td>
                 <td>
+                  <% /* Display date safely; if s.date is a Date, keep ISO; else print raw */ %>
+                  <%= (s.date && s.date.toISOString) ? s.date.toISOString().slice(0, 10) : String(s.date).slice(0,10) %>
+                </td>
+                <td>
+                  <!-- Edit should NOT require password -->
                   <a href="/shipments/edit/<%= s.id %>">
                     <%= s.tracking %>
                   </a>
                 </td>
                 <td><%= s.client %></td>
-                <td><%= s.location %></td>
+                <td><%= s.location %></td> <!-- Label shown as 'Description' -->
                 <td><%= s.transport %></td>
                 <td><%= s.courier %></td>
                 <td><span class="badge bg-<%= statusClass %>"><%= s.status %></span></td>
@@ -111,8 +114,8 @@
 
   <script>
     function checkPassword() {
-      const entered = prompt("Enter admin password to delete this shipment:");
-      return entered === "dama2025";
+      const entered = prompt("Enter admin password to DELETE:");
+      return entered === "pass4554"; // change here if you want "dama2025"
     }
   </script>
 

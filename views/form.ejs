@@ -13,11 +13,20 @@
         <h4><%= shipment ? 'Edit Shipment' : 'Add Shipment' %></h4>
       </div>
       <div class="card-body">
+        <% if (typeof error === 'string' && error) { %>
+          <div class="alert alert-danger"><%= error %></div>
+        <% } %>
+
         <form method="POST" action="<%= action %>">
           <div class="mb-3">
             <label class="form-label">Date</label>
-            <input type="datetime-local" name="date" class="form-control"
-              value="<%= shipment?.date ? shipment.date.toISOString().slice(0,16) : '' %>" required>
+            <input
+              type="datetime-local"
+              name="date"
+              class="form-control"
+              value="<%= shipment?.date ? new Date(shipment.date).toISOString().slice(0,16) : '' %>"
+              required
+            >
           </div>
 
           <div class="mb-3">
@@ -27,8 +36,15 @@
 
           <div class="mb-3">
             <label class="form-label">Tracking Number</label>
-            <input type="text" name="tracking" id="tracking" class="form-control"
-              value="<%= shipment?.tracking || '' %>" required autofocus>
+            <input
+              type="text"
+              name="tracking"
+              id="tracking"
+              class="form-control"
+              value="<%= shipment?.tracking || '' %>"
+              required
+              autofocus
+            >
           </div>
 
           <div class="mb-3">
@@ -79,13 +95,30 @@
 
   <!-- Barcode scanner support -->
   <script>
+    const form = document.querySelector('form');
     const trackingInput = document.getElementById('tracking');
-    trackingInput.focus();
+    const submitBtn = form.querySelector('button[type="submit"]');
 
-    trackingInput.addEventListener('keypress', function(e) {
+    // Focus tracking field for scanner
+    if (trackingInput) trackingInput.focus();
+
+    // Use keydown and requestSubmit so HTML5 validation still runs
+    trackingInput.addEventListener('keydown', function (e) {
       if (e.key === 'Enter') {
         e.preventDefault();
-        this.form.submit();
+        if (form.dataset.submitting === 'true') return; // debounce double scan
+        form.requestSubmit(); // triggers required/constraints properly
+      }
+    });
+
+    // Prevent double-submits and normalize tracking value
+    form.addEventListener('submit', function () {
+      form.dataset.submitting = 'true';
+      if (submitBtn) submitBtn.disabled = true;
+
+      // strip any whitespace scanners may inject into tracking
+      if (trackingInput && trackingInput.value) {
+        trackingInput.value = trackingInput.value.replace(/\s+/g, '').trim();
       }
     });
   </script>

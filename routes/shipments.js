@@ -3,6 +3,24 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
+// Helpers to normalize inputs (scanner-safe) and fix DATETIME format
+function toMySQLDateTime(input) {
+  // Accepts "YYYY-MM-DDTHH:MM" from <input type="datetime-local"> and returns "YYYY-MM-DD HH:MM:SS"
+  if (!input) return null;
+  const s = String(input).trim();
+  const withSpace = s.replace('T', ' ');
+  // If missing seconds, add ":00"
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(withSpace)) return withSpace + ':00';
+  return withSpace;
+}
+function cleanText(s) {
+  return (s ?? '').toString().replace(/\s+/g, ' ').trim();
+}
+function cleanTracking(s) {
+  // Many scanners inject whitespace or CR/LF — strip all whitespace inside the code
+  return (s ?? '').toString().replace(/\s+/g, '').trim();
+}
+
 // List all shipments
 router.get('/', (req, res) => {
   const search = req.query.search || '';
@@ -23,63 +41,6 @@ router.get('/', (req, res) => {
   });
 });
 
-// Export all shipments to CSV (Excel-friendly)
-router.get('/export', (req, res) => {
-  const sql = 'SELECT * FROM shipments ORDER BY date DESC';
-  db.query(sql, (err, rows) => {
-    if (err) {
-      console.error('❌ Error exporting shipments:', err);
-      return res.status(500).send('Database error');
-    }
-
-    // Helper to safely format CSV values
-    const toCsvValue = (v) => {
-      if (v === null || v === undefined) return '';
-      const s = String(v);
-      if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
-      return s;
-    };
-
-    // Format date as YYYY-MM-DD HH:MM (Excel-friendly)
-    const fmtDate = (d) => {
-      try {
-        const dt = d instanceof Date ? d : new Date(d);
-        if (isNaN(dt)) return '';
-        const pad = (n) => String(n).padStart(2, '0');
-        const Y = dt.getFullYear();
-        const M = pad(dt.getMonth() + 1);
-        const D = pad(dt.getDate());
-        const h = pad(dt.getHours());
-        const m = pad(dt.getMinutes());
-        return `${Y}-${M}-${D} ${h}:${m}`;
-      } catch {
-        return '';
-      }
-    };
-
-    const headers = ['Date', 'Tracking', 'Client', 'Description', 'Transport', 'Courier', 'Status'];
-    const lines = [headers.map(toCsvValue).join(',')];
-
-    for (const r of rows) {
-      lines.push([
-        fmtDate(r.date),
-        toCsvValue(r.tracking),
-        toCsvValue(r.client),
-        toCsvValue(r.location),   // stored as "location", shown as "Description"
-        toCsvValue(r.transport),
-        toCsvValue(r.courier),
-        toCsvValue(r.status)
-      ].join(','));
-    }
-
-    const csv = lines.join('\n');
-    const stamp = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="shipments_backup_${stamp}.csv"`);
-    res.send(csv);
-  });
-});
-
 // Show Add Shipment form
 router.get('/new', (req, res) => {
   res.render('form', {
@@ -93,13 +54,22 @@ router.get('/new', (req, res) => {
 router.post('/new', async (req, res) => {
   try {
     console.log('🧾 form data received:', req.body);
-    const { date, location, tracking, client, transport = '', courier = '', status = '' } = req.body;
+
+    const dateRaw = req.body.date;
+    const date = toMySQLDateTime(dateRaw);
+
+    const location = cleanText(req.body.location);
+    const tracking = cleanTracking(req.body.tracking);
+    const client = cleanText(req.body.client);
+    const transport = cleanText(req.body.transport || '');
+    const courier = cleanText(req.body.courier || '');
+    const status = cleanText(req.body.status || '');
 
     if (!date || !location || !tracking || !client) {
       return res.status(400).render('form', {
-        shipment: req.body,
+        shipment: { date: dateRaw, location, tracking, client, transport, courier, status },
         action: '/shipments/new',
-        error: 'Date, location, tracking, and client are required.'
+        error: 'Date, description, tracking, and client are required.'
       });
     }
 
@@ -108,19 +78,27 @@ router.post('/new', async (req, res) => {
         (date, location, tracking, client, transport, courier, status)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
+
     await new Promise((resolve, reject) => {
-      db.query(insert, [date, location, tracking, client, transport, courier, status], err =>
+      db.query(insert, [date, location, tracking, client, transport, courier, status], (err) =>
         err ? reject(err) : resolve()
       );
     });
 
-    res.redirect('/shipments');
+    return res.redirect('/shipments');
   } catch (err) {
-    if (err.code === 'ER_DUP_ENTRY') {
+    if (err && err.code === 'ER_DUP_ENTRY') {
       return res.status(400).render('form', {
         shipment: req.body,
         action: '/shipments/new',
-        error: `Tracking number "${req.body.tracking}" already exists.`
+        error: `Tracking number "${cleanTracking(req.body.tracking)}" already exists.`
+      });
+    }
+    if (err && err.errno === 1292) { // Incorrect datetime value
+      return res.status(400).render('form', {
+        shipment: req.body,
+        action: '/shipments/new',
+        error: 'Invalid Date/Time format. Please reselect the date/time.'
       });
     }
     console.error('❌ Uncaught error in POST /new:', err);
@@ -151,13 +129,22 @@ router.get('/edit/:id', (req, res) => {
 // Handle update submission
 router.post('/edit/:id', (req, res) => {
   const id = req.params.id;
-  const { date, location, tracking, client, transport = '', courier = '', status = '' } = req.body;
+
+  const dateRaw = req.body.date;
+  const date = toMySQLDateTime(dateRaw);
+
+  const location = cleanText(req.body.location);
+  const tracking = cleanTracking(req.body.tracking);
+  const client = cleanText(req.body.client);
+  const transport = cleanText(req.body.transport || '');
+  const courier = cleanText(req.body.courier || '');
+  const status = cleanText(req.body.status || '');
 
   if (!date || !location || !tracking || !client) {
     return res.status(400).render('form', {
-      shipment: req.body,
+      shipment: { date: dateRaw, location, tracking, client, transport, courier, status },
       action: `/shipments/edit/${id}`,
-      error: 'Date, location, tracking, and client are required.'
+      error: 'Date, description, tracking, and client are required.'
     });
   }
 
@@ -169,6 +156,20 @@ router.post('/edit/:id', (req, res) => {
 
   db.query(update, [date, location, tracking, client, transport, courier, status, id], err => {
     if (err) {
+      if (err.code === 'ER_DUP_ENTRY') {
+        return res.status(400).render('form', {
+          shipment: req.body,
+          action: `/shipments/edit/${id}`,
+          error: `Tracking number "${tracking}" already exists.`
+        });
+      }
+      if (err.errno === 1292) {
+        return res.status(400).render('form', {
+          shipment: req.body,
+          action: `/shipments/edit/${id}`,
+          error: 'Invalid Date/Time format. Please reselect the date/time.'
+        });
+      }
       console.error('❌ Error updating shipment:', err);
       return res.status(500).render('form', {
         shipment: req.body,
