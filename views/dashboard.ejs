@@ -80,7 +80,6 @@
               %>
               <tr>
                 <td>
-                  <% /* Display date safely; if s.date is a Date, keep ISO; else print raw */ %>
                   <%= (s.date && s.date.toISOString) ? s.date.toISOString().slice(0, 10) : String(s.date).slice(0,10) %>
                 </td>
                 <td>
@@ -115,7 +114,8 @@
   <script>
     function checkPassword() {
       const entered = prompt("Enter admin password to DELETE:");
-      return entered === "pass4554"; // change here if you want "dama2025"
+      if (entered == null) return false; // user canceled
+      return entered.trim() === "dama2025";
     }
   </script>
 
