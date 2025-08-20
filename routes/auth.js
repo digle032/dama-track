@@ -19,23 +19,22 @@ router.post('/login', (req, res) => {
       return res.render('login', { error: 'Database error' });
     }
 
-    if (results.length === 0) {
+    if (!results || results.length === 0) {
       return res.render('login', { error: 'User not found' });
     }
 
     const user = results[0];
-
     try {
       const match = await bcrypt.compare(password, user.password);
       if (!match) {
         return res.render('login', { error: 'Incorrect password' });
       }
 
+      // Minimal session info
       req.session.user = { id: user.id, username: user.username };
       res.redirect('/shipments');
-
-    } catch (err) {
-      console.error('❌ Bcrypt error:', err);
+    } catch (e) {
+      console.error('❌ Bcrypt error:', e);
       res.render('login', { error: 'Something went wrong' });
     }
   });
@@ -49,4 +48,3 @@ router.get('/logout', (req, res) => {
 });
 
 module.exports = router;
-

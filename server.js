@@ -12,7 +12,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
 app.use(session({
-  secret: 'logisticsSecretKey',
+  secret: process.env.SESSION_SECRET || 'logisticsSecretKey',
   resave: false,
   saveUninitialized: true
 }));
@@ -27,12 +27,12 @@ const shipmentRoutes = require('./routes/shipments');
 app.use('/', authRoutes);
 app.use('/shipments', shipmentRoutes);
 
-// Handle 404 for unknown routes
+// 404
 app.use((req, res) => {
   res.status(404).send('Page not found.');
 });
 
-// Start server
+// Start
 app.listen(PORT, () => {
   console.log(`✅ Server running on http://localhost:${PORT}`);
 });

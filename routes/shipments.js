@@ -6,22 +6,22 @@ const ExcelJS = require('exceljs'); // for true .xlsx export
 
 // ---------- Helpers (scanner-safe + MySQL DATETIME) ----------
 function toMySQLDateTime(input) {
-  if (!input) return null;                 // expect "YYYY-MM-DDTHH:MM"
+  if (!input) return null; // expect "YYYY-MM-DDTHH:MM"
   const s = String(input).trim();
   const withSpace = s.replace('T', ' ');
   if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(withSpace)) return withSpace + ':00';
-  return withSpace; // if already has :ss or full datetime
+  return withSpace; // if already has seconds
 }
 function cleanText(s) {
   return (s ?? '').toString().replace(/\s+/g, ' ').trim();
 }
 function cleanTracking(s) {
-  // scanners sometimes add CR/LF or spaces; also prevents "empty after delete"
+  // Also prevents “empty after delete” and scanner CR/LF
   return (s ?? '').toString().replace(/\s+/g, '').trim();
 }
 // -------------------------------------------------------------
 
-// List all shipments
+// List all shipments (search)
 router.get('/', (req, res) => {
   const search = req.query.search || '';
   const params = [];
@@ -50,7 +50,7 @@ router.get('/new', (req, res) => {
   });
 });
 
-// Handle submission of new shipment (with strong validation + duplicate pre-check)
+// Create shipment (strong validation + duplicate pre-check)
 router.post('/new', (req, res) => {
   const dateRaw = req.body.date;
   const date = toMySQLDateTime(dateRaw);
@@ -62,7 +62,6 @@ router.post('/new', (req, res) => {
   const courier = cleanText(req.body.courier || '');
   const status = cleanText(req.body.status || '');
 
-  // Required checks (covers the "deleted then scanned new" scenario)
   if (!date || !location || !tracking || !client) {
     return res.status(400).render('form', {
       shipment: { date: dateRaw, location, tracking, client, transport, courier, status },
@@ -71,7 +70,7 @@ router.post('/new', (req, res) => {
     });
   }
 
-  // Pre-check duplicate tracking for NEW
+  // Duplicate check (NEW)
   const dupSql = 'SELECT id FROM shipments WHERE tracking = ? LIMIT 1';
   db.query(dupSql, [tracking], (dupErr, dupRows) => {
     if (dupErr) {
@@ -98,7 +97,6 @@ router.post('/new', (req, res) => {
     db.query(insert, [date, location, tracking, client, transport, courier, status], (err) => {
       if (err) {
         console.error('❌ Uncaught error in POST /new:', err);
-        // Fallback friendly messages
         if (err.code === 'ER_DUP_ENTRY') {
           return res.status(400).render('form', {
             shipment: { date: dateRaw, location, tracking, client, transport, courier, status },
@@ -124,7 +122,7 @@ router.post('/new', (req, res) => {
   });
 });
 
-// Show shipment edit form
+// Edit form
 router.get('/edit/:id', (req, res) => {
   const id = req.params.id;
   db.query('SELECT * FROM shipments WHERE id = ?', [id], (err, results) => {
@@ -140,7 +138,7 @@ router.get('/edit/:id', (req, res) => {
   });
 });
 
-// Handle update submission (duplicate pre-check on EDIT)
+// Update shipment (duplicate pre-check on EDIT)
 router.post('/edit/:id', (req, res) => {
   const id = req.params.id;
 
@@ -162,7 +160,7 @@ router.post('/edit/:id', (req, res) => {
     });
   }
 
-  // Pre-check: is this tracking used by a different row?
+  // Duplicate check (EDIT)
   const dupSql = 'SELECT id FROM shipments WHERE tracking = ? AND id <> ? LIMIT 1';
   db.query(dupSql, [tracking, id], (dupErr, dupRows) => {
     if (dupErr) {
@@ -215,9 +213,17 @@ router.post('/edit/:id', (req, res) => {
   });
 });
 
-// Handle delete shipment
+// Delete shipment (server-side password via modal form field)
 router.post('/delete/:id', (req, res) => {
   const id = req.params.id;
+  const provided = (req.body.delete_password || '').trim();
+  const expected = process.env.DELETE_PASSWORD || 'dama2025';
+
+  if (provided !== expected) {
+    console.warn('⚠️ Incorrect delete password attempt for id:', id);
+    return res.redirect('/shipments');
+  }
+
   db.query('DELETE FROM shipments WHERE id = ?', [id], err => {
     if (err) {
       console.error('❌ Error deleting shipment:', err);
@@ -227,7 +233,7 @@ router.post('/delete/:id', (req, res) => {
   });
 });
 
-// Backup to Excel
+// Excel Backup
 router.get('/backup', (req, res) => {
   const sql = `
     SELECT id, date, tracking, client, location, transport, courier, status

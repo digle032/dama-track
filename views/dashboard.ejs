@@ -4,33 +4,45 @@
   <meta charset="UTF-8">
   <title>Dashboard - Logistics</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <style>
-    body { background-color:#f4f4f4; background-image:url('https://www.toptal.com/designers/subtlepatterns/patterns/symphony.png'); background-repeat:repeat; background-attachment:fixed; }
-    .brand-heading { font-family:'Roboto Slab', serif; font-weight:600; color:#c0392b; font-size:1.8rem; }
+    body {
+      background-color:#f6f7fb;
+    }
+    .brand-heading {
+      font-family:'Roboto Slab', serif;
+      font-weight:600;
+      color:#c0392b;
+      font-size:1.8rem;
+    }
+    thead.sticky th { position: sticky; top: 0; background: #fff; z-index: 1; }
+    table tbody tr:hover { background-color: #fafcff; }
   </style>
 </head>
 <body>
   <div class="container mt-4">
+    <!-- Toolbar -->
     <div class="d-flex justify-content-between align-items-center mb-3">
-      <h3 class="brand-heading">Dama Cargo Logistics</h3>
+      <h3 class="brand-heading mb-0">Dama Cargo Logistics</h3>
       <div class="d-flex gap-2">
-        <a href="/shipments/new" class="btn btn-success">+ Add Shipment</a>
-        <a href="/shipments/backup" class="btn btn-secondary"><i class="fas fa-file-excel"></i> Backup to Excel</a>
-        <a href="/logout" class="btn btn-outline-danger">Logout</a>
+        <a href="/shipments/new" class="btn btn-success"><i class="bi bi-plus-lg"></i> Add Shipment</a>
+        <a href="/shipments/backup" class="btn btn-outline-secondary"><i class="bi bi-file-earmark-excel"></i> Export Excel</a>
+        <a href="/logout" class="btn btn-outline-danger"><i class="bi bi-box-arrow-right"></i> Logout</a>
       </div>
     </div>
 
+    <!-- Search -->
     <form method="GET" action="/shipments" class="input-group mb-3">
       <input type="text" name="search" class="form-control" placeholder="Search tracking or client" value="<%= search || '' %>">
-      <button class="btn btn-primary" type="submit">Search</button>
+      <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i> Search</button>
     </form>
 
-    <div class="table-responsive">
-      <table class="table table-bordered table-hover bg-white align-middle">
-        <thead class="table-light">
-          <tr>
+    <!-- Table -->
+    <div class="table-responsive shadow-sm">
+      <table class="table table-bordered table-hover bg-white align-middle mb-0">
+        <thead class="sticky">
+          <tr class="table-light">
             <th>Date</th>
             <th>Tracking</th>
             <th>Client</th>
@@ -38,12 +50,12 @@
             <th>Transport</th>
             <th>Courier</th>
             <th>Status</th>
-            <th class="text-center">Actions</th>
+            <th class="text-center" style="width:160px;">Actions</th>
           </tr>
         </thead>
         <tbody>
-          <% if (shipments.length === 0) { %>
-            <tr><td colspan="8" class="text-center">No results found.</td></tr>
+          <% if (!shipments || shipments.length === 0) { %>
+            <tr><td colspan="8" class="text-center text-muted py-4">No results found.</td></tr>
           <% } else { %>
             <% shipments.forEach(function(s) { %>
               <%
@@ -53,9 +65,11 @@
                 else if (statusLower === 'in transit') statusClass = 'primary';
                 else if (statusLower === 'delayed') statusClass = 'danger';
                 else if (statusLower === 'pending') statusClass = 'warning';
+                else if (statusLower === 'processed') statusClass = 'success';
+                else if (statusLower === 'unknown') statusClass = 'warning';
               %>
               <tr>
-                <td><%= (s.date && s.date.toISOString) ? s.date.toISOString().slice(0, 10) : String(s.date).slice(0,10) %></td>
+                <td><%= (s.date && s.date.toISOString) ? s.date.toISOString().slice(0, 16).replace('T',' ') : String(s.date).slice(0,16) %></td>
                 <td><a href="/shipments/edit/<%= s.id %>"><%= s.tracking %></a></td>
                 <td><%= s.client %></td>
                 <td><%= s.location %></td>
@@ -63,10 +77,12 @@
                 <td><%= s.courier %></td>
                 <td><span class="badge bg-<%= statusClass %>"><%= s.status %></span></td>
                 <td class="text-center">
-                  <a href="/shipments/edit/<%= s.id %>" class="btn btn-sm btn-warning me-1"><i class="fas fa-edit"></i> Edit</a>
-                  <form action="/shipments/delete/<%= s.id %>" method="POST" class="d-inline" onsubmit="return checkPassword()">
-                    <button class="btn btn-sm btn-danger"><i class="fas fa-trash-alt"></i> Delete</button>
-                  </form>
+                  <a href="/shipments/edit/<%= s.id %>" class="btn btn-sm btn-warning me-1">
+                    <i class="bi bi-pencil-square"></i> Edit
+                  </a>
+                  <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal" data-id="<%= s.id %>">
+                    <i class="bi bi-trash"></i> Delete
+                  </button>
                 </td>
               </tr>
             <% }); %>
@@ -76,11 +92,37 @@
     </div>
   </div>
 
+  <!-- Delete Modal (server-side check) -->
+  <div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <form id="deleteForm" method="POST" class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Confirm Delete</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-2">Enter admin password to delete this shipment.</p>
+          <input type="password" name="delete_password" class="form-control" placeholder="Password" required>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-danger">Delete</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    function checkPassword() {
-      const entered = prompt("Enter admin password to DELETE:");
-      if (entered == null) return false;
-      return entered.trim() === "dama2025";
+    const deleteModal = document.getElementById('deleteModal');
+    const deleteForm  = document.getElementById('deleteForm');
+    if (deleteModal) {
+      deleteModal.addEventListener('show.bs.modal', event => {
+        const button = event.relatedTarget;
+        const id = button.getAttribute('data-id');
+        deleteForm.setAttribute('action', '/shipments/delete/' + id);
+        deleteForm.querySelector('input[name="delete_password"]').value = '';
+      });
     }
   </script>
 </body>

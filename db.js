@@ -6,6 +6,8 @@ const connection = mysql.createConnection({
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
+  // optional: support bigger packets if notes get long
+  multipleStatements: false
 });
 
 connection.connect((err) => {
