@@ -9,7 +9,7 @@ router.get('/login', (req, res) => {
   res.render('login', { error: null });
 });
 
-// POST login (uses pooled db.query with retries)
+// POST login
 router.post('/login', (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password) {
@@ -20,7 +20,8 @@ router.post('/login', (req, res) => {
   db.query(sql, [username], async (err, results) => {
     if (err) {
       console.error('❌ Database error (login select):', err.code || err.message, err);
-      return res.render('login', { error: 'Database error' });
+      // TEMP: show the code so we can diagnose quickly (remove after fixed)
+      return res.render('login', { error: `Database error (${err.code || err.message})` });
     }
 
     if (!results || results.length === 0) {
@@ -32,7 +33,6 @@ router.post('/login', (req, res) => {
       const ok = await bcrypt.compare(password, user.password);
       if (!ok) return res.render('login', { error: 'Incorrect password' });
 
-      // Minimal session info
       req.session.user = { id: user.id, username: user.username };
       return res.redirect('/shipments');
     } catch (e) {
