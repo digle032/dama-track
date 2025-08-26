@@ -4,44 +4,46 @@ const router = express.Router();
 const bcrypt = require('bcrypt');
 const db = require('../db');
 
-// GET: login page
+// GET login page
 router.get('/login', (req, res) => {
   res.render('login', { error: null });
 });
 
-// POST: login
-router.post('/login', async (req, res) => {
+// POST login (uses pooled db.query with retries)
+router.post('/login', (req, res) => {
   const { username, password } = req.body || {};
-  try {
-    if (!username || !password) {
-      return res.render('login', { error: 'Please enter username and password.' });
-    }
-
-    const [rows] = await db.query(
-      'SELECT id, username, password_hash FROM users WHERE username = ? LIMIT 1',
-      [username]
-    );
-
-    if (!rows || rows.length === 0) {
-      return res.render('login', { error: 'Invalid username or password.' });
-    }
-
-    const user = rows[0];
-    const ok = await bcrypt.compare(password, user.password_hash);
-    if (!ok) {
-      return res.render('login', { error: 'Invalid username or password.' });
-    }
-
-    req.session.userId = user.id;
-    req.session.username = user.username;
-    return res.redirect('/dashboard');
-  } catch (err) {
-    console.error('❌ [LOGIN] Database error:', err.code || err.message, err);
-    return res.render('login', { error: 'Database error. Please try again.' });
+  if (!username || !password) {
+    return res.render('login', { error: 'Please enter username and password' });
   }
+
+  const sql = 'SELECT id, username, password FROM users WHERE username = ? LIMIT 1';
+  db.query(sql, [username], async (err, results) => {
+    if (err) {
+      console.error('❌ Database error (login select):', err.code || err.message, err);
+      return res.render('login', { error: 'Database error' });
+    }
+
+    if (!results || results.length === 0) {
+      return res.render('login', { error: 'User not found' });
+    }
+
+    const user = results[0];
+    try {
+      const ok = await bcrypt.compare(password, user.password);
+      if (!ok) return res.render('login', { error: 'Incorrect password' });
+
+      // Minimal session info
+      req.session.user = { id: user.id, username: user.username };
+      return res.redirect('/shipments');
+    } catch (e) {
+      console.error('❌ Bcrypt compare error:', e);
+      return res.render('login', { error: 'Something went wrong' });
+    }
+  });
 });
 
-router.post('/logout', (req, res) => {
+// Logout
+router.get('/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/login'));
 });
 
