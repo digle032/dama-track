@@ -1,4 +1,3 @@
-// routes/auth.js
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
@@ -11,17 +10,13 @@ router.get('/login', (req, res) => {
 
 // POST login
 router.post('/login', (req, res) => {
-  const { username, password } = req.body || {};
-  if (!username || !password) {
-    return res.render('login', { error: 'Please enter username and password' });
-  }
+  const { username, password } = req.body;
 
-  const sql = 'SELECT id, username, password FROM users WHERE username = ? LIMIT 1';
-  db.query(sql, [username], async (err, results) => {
+  const query = 'SELECT * FROM users WHERE username = ?';
+  db.query(query, [username], async (err, results) => {
     if (err) {
-      console.error('❌ Database error (login select):', err.code || err.message, err);
-      // TEMP: show the code so we can diagnose quickly (remove after fixed)
-      return res.render('login', { error: `Database error (${err.code || err.message})` });
+      console.error('❌ Database error:', err);
+      return res.render('login', { error: 'Database error' });
     }
 
     if (!results || results.length === 0) {
@@ -30,21 +25,26 @@ router.post('/login', (req, res) => {
 
     const user = results[0];
     try {
-      const ok = await bcrypt.compare(password, user.password);
-      if (!ok) return res.render('login', { error: 'Incorrect password' });
+      const match = await bcrypt.compare(password, user.password);
+      if (!match) {
+        return res.render('login', { error: 'Incorrect password' });
+      }
 
+      // Minimal session info
       req.session.user = { id: user.id, username: user.username };
-      return res.redirect('/shipments');
+      res.redirect('/shipments');
     } catch (e) {
-      console.error('❌ Bcrypt compare error:', e);
-      return res.render('login', { error: 'Something went wrong' });
+      console.error('❌ Bcrypt error:', e);
+      res.render('login', { error: 'Something went wrong' });
     }
   });
 });
 
 // Logout
 router.get('/logout', (req, res) => {
-  req.session.destroy(() => res.redirect('/login'));
+  req.session.destroy(() => {
+    res.redirect('/login');
+  });
 });
 
 module.exports = router;
